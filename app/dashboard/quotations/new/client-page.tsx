@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Sparkles, Building2, CheckCircle2, AlignLeft } from "lucide-react";
@@ -37,17 +38,25 @@ export default function NewQuotationClient({ templates }: { templates: any[] }) 
     const handleGenerate = async () => {
         try {
             setIsGenerating(true);
-            await createQuotation({
+            const result = await createQuotation({
                 name,
                 description,
                 requirements,
                 templateId
             });
+
+            if (!result?.success) {
+                toast.error(result?.error || "Failed to generate quotation.");
+                setIsGenerating(false);
+                return;
+            }
+
+            toast.success("Generating Qutation Please wait!!");
             // Redirect smoothly back to the ledger upon success
             router.push("/dashboard/quotations");
         } catch (error) {
             console.error(error);
-            alert("Failed to generate quotation.");
+            toast.error("Failed to generate quotation.");
             setIsGenerating(false);
         }
     };

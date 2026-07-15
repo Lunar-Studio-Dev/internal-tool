@@ -4,16 +4,16 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { generateQuotation } from "@/ai";
+import inngestClient from "@/inngest/client";
 
 export async function getQuotations() {
   const reqHeaders = await headers();
   const session = await auth.api.getSession({ headers: reqHeaders });
-  
+
   if (!session) {
     throw new Error("Unauthorized");
   }
-  
+
   return prisma.quotation.findMany({
     where: { userId: session.user.id },
     include: { template: true },
@@ -27,47 +27,53 @@ export async function createQuotation(data: {
   requirements: string;
   templateId: string;
 }) {
-  const reqHeaders = await headers();
-  const session = await auth.api.getSession({ headers: reqHeaders });
-  
-  if (!session) throw new Error("Unauthorized");
+  try {
+    const reqHeaders = await headers();
+    const session = await auth.api.getSession({ headers: reqHeaders });
 
-  // Fetch the chosen template to merge the final document
-  const template = await prisma.template.findUnique({
-    where: { id: data.templateId, userId: session.user.id }
-  });
+    if (!session) throw new Error("Unauthorized");
 
-  if (!template) {
-    throw new Error("Template not found or unauthorized.");
-  }
+    // Fetch the chosen template to merge the final document
+    const template = await prisma.template.findUnique({
+      where: { id: data.templateId, userId: session.user.id }
+    });
 
-  // Compile final content: Base Template Markdown + Client Requirements
-  const finalContent = await generateQuotation(template.content, data.requirements)
-
-  const quotation = await prisma.quotation.create({
-    data: {
-      name: data.name,
-      description: data.description,
-      requirements: data.requirements,
-      content: finalContent,
-      templateId: data.templateId,
-      userId: session.user.id
+    if (!template) {
+      throw new Error("Template not found or unauthorized.");
     }
-  });
-  
-  revalidatePath("/dashboard/quotations");
-  return quotation;
+
+    console.log("QUOTATION WEBHOOK URL: ", process.env.QUOTATION_WEBHOOK_URL)
+
+    await inngestClient.send({
+      name: "app/generate-quotation",
+      data: {
+        name: data.name,
+        description: data.description,
+        requirements: data.requirements,
+        templateId: data.templateId,
+        userId: session.user.id,
+        template: template.content,
+        quotationWebhookUrl: process.env.QUOTATION_WEBHOOK_URL ?? "http://localhost:3000/api/webhook/quotation"
+      }
+    })
+
+    revalidatePath("/dashboard/quotations");
+    return { success: true };
+  } catch (error: any) {
+    console.error("[ACTION ERROR]: ", error);
+    return { success: false, error: error.message || "An unexpected error occurred." };
+  }
 }
 
 export async function deleteQuotation(id: string) {
-   const reqHeaders = await headers();
-   const session = await auth.api.getSession({ headers: reqHeaders });
-   
-   if (!session) throw new Error("Unauthorized");
-   
-   await prisma.quotation.delete({
-     where: { id, userId: session.user.id }
-   });
-   
-   revalidatePath("/dashboard/quotations");
+  const reqHeaders = await headers();
+  const session = await auth.api.getSession({ headers: reqHeaders });
+
+  if (!session) throw new Error("Unauthorized");
+
+  await prisma.quotation.delete({
+    where: { id, userId: session.user.id }
+  });
+
+  revalidatePath("/dashboard/quotations");
 }
