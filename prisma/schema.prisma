@@ -77,6 +77,12 @@ model Verification {
   @@map("verification")
 }
 
+enum QuotationStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
 model Quotation {
   id String @id @default(cuid())
 
@@ -84,7 +90,9 @@ model Quotation {
   description String?
 
   requirements String
-  content      String
+  content      String?
+
+  status String @default("pending")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

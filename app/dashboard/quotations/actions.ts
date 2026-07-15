@@ -5,6 +5,8 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import inngestClient from "@/inngest/client";
+import { getClientSubscriptionToken } from "inngest/react";
+import { quotationChannel } from "@/inngest/channels/quotation";
 
 export async function getQuotations() {
   const reqHeaders = await headers();
@@ -42,20 +44,28 @@ export async function createQuotation(data: {
       throw new Error("Template not found or unauthorized.");
     }
 
-    console.log("QUOTATION WEBHOOK URL: ", process.env.QUOTATION_WEBHOOK_URL)
-
-    await inngestClient.send({
-      name: "app/generate-quotation",
+    // 1. Create the quotation row immediately with status: "pending"
+    const quotation = await prisma.quotation.create({
       data: {
         name: data.name,
         description: data.description,
         requirements: data.requirements,
         templateId: data.templateId,
         userId: session.user.id,
-        template: template.content,
-        quotationWebhookUrl: process.env.QUOTATION_WEBHOOK_URL ?? "http://localhost:3000/api/webhook/quotation"
+        status: "processing",
       }
-    })
+    });
+
+    // 2. Send the Inngest event with the DB row ID
+    await inngestClient.send({
+      name: "app/generate-quotation",
+      data: {
+        quotationId: quotation.id,
+        template: template.content,
+        requirements: data.requirements,
+        quotationWebhookUrl: process.env.QUOTATION_WEBHOOK_URL ?? "http://localhost:3000/api/webhook/quotation",
+      }
+    });
 
     revalidatePath("/dashboard/quotations");
     return { success: true };
@@ -76,4 +86,16 @@ export async function deleteQuotation(id: string) {
   });
 
   revalidatePath("/dashboard/quotations");
+}
+
+export async function getRealtimeToken(quotationId: string) {
+  const reqHeaders = await headers();
+  const session = await auth.api.getSession({ headers: reqHeaders });
+
+  if (!session) throw new Error("Unauthorized");
+
+  return getClientSubscriptionToken(inngestClient, {
+    channel: quotationChannel({ quotationId }),
+    topics: ["status"],
+  });
 }

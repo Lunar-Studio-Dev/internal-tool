@@ -1,33 +1,32 @@
 import prisma from "@/lib/prisma";
 
-
 export async function POST(req: Request) {
     const body = await req.json();
 
-    if (!body.name || !body.content || !body.requirements || !body.userId || !body.templateId) {
-        return Response.json({ success: false, error: "Missing required fields" });
+    if (!body.quotationId) {
+        return Response.json({ success: false, error: "Missing quotationId" });
     }
 
-    console.log("{QUOTATION}: ", body.content)
     try {
-        const quotation = await prisma.quotation.create({
-            data: {
-                name: body.name,
-                description: body.description,
-                content: body.content,
-                requirements: body.requirements,
-                userId: body.userId,
-                templateId: body.templateId
-            }
-        })
-        if (!quotation.id) {
-            return Response.json({ success: false, error: "Failed to save quotation" });
+        const updateData: Record<string, any> = {};
+
+        if (body.status) {
+            updateData.status = body.status;
         }
 
-        console.log("QUOTATION SAVED: ", quotation)
+        if (body.content) {
+            updateData.content = body.content;
+        }
+
+        const quotation = await prisma.quotation.update({
+            where: { id: body.quotationId },
+            data: updateData,
+        });
+
+        console.log("QUOTATION UPDATED: ", quotation.id, "→", updateData.status ?? "no status change");
         return Response.json({ success: true });
     } catch (error) {
-        console.log("QUotation ERROR: ", error)
-        return Response.json({ success: false, error: "Failed to save quotation" });
+        console.error("Quotation webhook error: ", error);
+        return Response.json({ success: false, error: "Failed to update quotation" }, { status: 500 });
     }
 }
