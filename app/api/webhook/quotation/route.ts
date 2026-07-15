@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 export async function POST(req: Request) {
     const body = await req.json();
 
-    if (!body.name || !body.description || !body.content || !body.requirements || !body.userId || !body.templateId) {
+    if (!body.name || !body.content || !body.requirements || !body.userId || !body.templateId) {
         return Response.json({ success: false, error: "Missing required fields" });
     }
 
