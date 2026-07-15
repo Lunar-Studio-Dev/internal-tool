@@ -66,20 +66,20 @@ export default function QuotationsClient({ initialQuotations }: { initialQuotati
                     <p className="text-muted-foreground text-sm mt-1">Manage and track all generated client proposals.</p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="relative">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+                    <div className="relative w-full sm:w-auto">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                             type="search"
                             placeholder="Search by name or ID..."
-                            className="pl-9 w-[200px] md:w-[280px] bg-background"
+                            className="pl-9 w-full sm:w-[200px] md:w-[280px] bg-background"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                         />
                     </div>
 
-                    <Link href="/dashboard/quotations/new">
-                        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                    <Link href="/dashboard/quotations/new" className="w-full sm:w-auto">
+                        <Button className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white">
                             <Plus className="h-4 w-4 mr-2" />
                             Create Quotation
                         </Button>
@@ -88,14 +88,14 @@ export default function QuotationsClient({ initialQuotations }: { initialQuotati
             </div>
 
             {/* Ledger Table Section */}
-            <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
-                <Table>
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-x-auto">
+                <Table className="min-w-[500px]">
                     <TableHeader>
                         <TableRow className="bg-muted/50 hover:bg-muted/50">
                             <TableHead className="w-[100px] pl-6">Quote ID</TableHead>
                             <TableHead>Quotation Name</TableHead>
-                            <TableHead>Base Template Used</TableHead>
-                            <TableHead>Date</TableHead>
+                            <TableHead className="hidden sm:table-cell">Base Template Used</TableHead>
+                            <TableHead className="hidden md:table-cell">Date</TableHead>
                             <TableHead className="text-right pr-6">Action</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -120,13 +120,13 @@ export default function QuotationsClient({ initialQuotations }: { initialQuotati
                                             )}
                                         </div>
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell className="hidden sm:table-cell">
                                         <div className="flex items-center gap-2">
                                             <FileText className="h-4 w-4 text-indigo-500 opacity-70 shrink-0" />
-                                            {quote.template?.name || "Unknown Template"}
+                                            <span className="truncate max-w-[120px] lg:max-w-none">{quote.template?.name || "Unknown Template"}</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-muted-foreground text-sm">
+                                    <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                                         {new Date(quote.createdAt).toLocaleDateString(undefined, {
                                             month: 'short',
                                             day: 'numeric',

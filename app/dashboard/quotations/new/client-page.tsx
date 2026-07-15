@@ -20,6 +20,7 @@ import {
     ResizablePanel,
     ResizablePanelGroup
 } from "@/components/ui/resizable";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Markdown } from "@/components/markdown";
 import { createQuotation } from "../actions";
 
@@ -54,7 +55,7 @@ export default function NewQuotationClient({ templates }: { templates: any[] }) 
     return (
         <div className="flex flex-col h-[calc(100vh-6rem)]">
             {/* Top Navigation & Header */}
-            <div className="flex items-center justify-between pb-4 border-b shrink-0">
+            <div className="flex flex-col sm:flex-row items-center justify-between pb-4 border-b shrink-0">
                 <div className="flex items-center gap-4">
                     <Link href="/dashboard/quotations">
                         <Button variant="ghost" size="icon" className="rounded-full shadow-sm">
@@ -67,19 +68,21 @@ export default function NewQuotationClient({ templates }: { templates: any[] }) 
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <Button variant="outline" render={<Link href="/dashboard/quotations" />}>
-                        Cancel
-                    </Button>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-4 sm:mt-0 w-full sm:w-auto">
+                    <Link href="/dashboard/quotations" className="w-full sm:w-auto">
+                        <Button variant="outline" className="w-full">
+                            Cancel
+                        </Button>
+                    </Link>
                     <Button
                         onClick={handleGenerate}
                         disabled={isGenerating || !name || !templateId}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[150px]"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto"
                     >
                         {isGenerating ? (
                             <span className="flex items-center">Generating...</span>
                         ) : (
-                            <span className="flex items-center"><Sparkles className="h-4 w-4 mr-2" /> Generate Final</span>
+                            <span className="flex items-center"><Sparkles className="h-4 w-4 mr-2" /> Generate</span>
                         )}
                     </Button>
                 </div>
@@ -134,8 +137,8 @@ export default function NewQuotationClient({ templates }: { templates: any[] }) 
                 </div>
             </div>
 
-            {/* Split Screen Workspace */}
-            <div className="flex-1 min-h-0 border rounded-xl overflow-hidden shadow-sm bg-background mt-2">
+            {/* Split Screen Workspace (Desktop) */}
+            <div className="hidden md:flex flex-1 min-h-0 border rounded-xl overflow-hidden shadow-sm bg-background mt-2">
                 <ResizablePanelGroup direction="horizontal" {...{} as any}>
 
                     {/* Left Panel: Raw Markdown Editor */}
@@ -170,6 +173,33 @@ export default function NewQuotationClient({ templates }: { templates: any[] }) 
                     </ResizablePanel>
 
                 </ResizablePanelGroup>
+            </div>
+
+            {/* Tabbed Workspace (Mobile) */}
+            <div className="flex md:hidden flex-1 min-h-[500px] mt-2">
+                <Tabs defaultValue="edit" className="w-full h-full flex flex-col">
+                    <TabsList className="w-full grid grid-cols-2 shrink-0">
+                        <TabsTrigger value="edit">✏️ Edit Req</TabsTrigger>
+                        <TabsTrigger value="preview">👁️ Preview</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="edit" className="flex-1 mt-2 border rounded-xl bg-muted/10 overflow-hidden flex flex-col min-h-[400px] overflow-y-auto">
+                        <Textarea
+                            value={requirements}
+                            onChange={(e) => setRequirements(e.target.value)}
+                            className="flex-1 w-full resize-none border-0 focus-visible:ring-0 p-4 font-mono text-sm leading-relaxed bg-transparent rounded-none shadow-none focus-visible:shadow-none"
+                            placeholder="Write constraints here..."
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="preview" className="flex-1 mt-2 mb-2 border rounded-xl bg-background overflow-hidden flex flex-col min-h-[400px] overflow-y-auto">
+                        <ScrollArea className="flex-1">
+                            <div className="p-4">
+                                <Markdown content={requirements || "*Preview will appear here...*"} />
+                            </div>
+                        </ScrollArea>
+                    </TabsContent>
+                </Tabs>
             </div>
         </div>
     );

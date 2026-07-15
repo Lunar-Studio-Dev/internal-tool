@@ -56,7 +56,7 @@ export default function TemplatesClient({ initialTemplates }: { initialTemplates
                     <p className="text-muted-foreground text-sm mt-1">Manage reusable project template patterns.</p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row w-full sm:w-auto items-center gap-3">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -185,7 +185,7 @@ export default function TemplatesClient({ initialTemplates }: { initialTemplates
                 open={!!viewTemplate}
                 onOpenChange={(open) => { if (!open) setViewTemplate(null); }}
             >
-                <DialogContent className="sm:max-w-[750px] max-h-[85vh] overflow-y-auto w-[90vw]">
+                <DialogContent className="w-[95vw] sm:max-w-[750px] max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="text-2xl font-bold flex items-center gap-2">
                             <FileText className="h-6 w-6 text-indigo-500" />

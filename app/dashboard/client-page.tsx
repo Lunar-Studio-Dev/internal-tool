@@ -70,15 +70,15 @@ export default function DashboardClient({ user, counts, recentQuotations, recent
             </div>
 
             {/* Tier 2: Quick Actions */}
-            <div className="bg-muted/40 p-4 rounded-xl flex items-center gap-4">
-                <h3 className="font-semibold text-sm mr-4 hidden md:block">🚀 Quick Actions</h3>
-                <Link href="/dashboard/quotations/new">
-                    <Button className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-transform hover:-translate-y-0.5">
+            <div className="bg-muted/40 p-4 rounded-xl flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+                <h3 className="font-semibold text-sm mr-4 hidden md:block shrink-0">🚀 Quick Actions</h3>
+                <Link href="/dashboard/quotations/new" className="w-full sm:w-auto">
+                    <Button className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-transform hover:-translate-y-0.5">
                         <Plus className="mr-2 h-4 w-4" /> Generate New Quotation
                     </Button>
                 </Link>
-                <Link href="/dashboard/templates">
-                    <Button variant="outline" className="shadow-sm transition-transform hover:-translate-y-0.5 bg-background">
+                <Link href="/dashboard/templates" className="w-full sm:w-auto">
+                    <Button variant="outline" className="w-full sm:w-auto shadow-sm transition-transform hover:-translate-y-0.5 bg-background">
                         <Folder className="mr-2 h-4 w-4" /> Explore Templates
                     </Button>
                 </Link>
@@ -96,14 +96,14 @@ export default function DashboardClient({ user, counts, recentQuotations, recent
                             </Button>
                         </Link>
                     </div>
-                    <div className="border rounded-xl bg-card shadow-sm overflow-hidden">
-                        <Table>
+                    <div className="border rounded-xl bg-card shadow-sm overflow-x-auto">
+                        <Table className="min-w-[400px]">
                             <TableHeader>
                                 <TableRow className="bg-muted/30">
                                     <TableHead className="pl-4">Quote ID</TableHead>
                                     <TableHead>Project Name</TableHead>
-                                    <TableHead>Template Used</TableHead>
-                                    <TableHead className="text-right pr-4">Date</TableHead>
+                                    <TableHead className="hidden sm:table-cell">Template Used</TableHead>
+                                    <TableHead className="hidden sm:table-cell text-right pr-4">Date</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -122,12 +122,12 @@ export default function DashboardClient({ user, counts, recentQuotations, recent
                                             <TableCell className="font-semibold text-foreground">
                                                 {quote.name}
                                             </TableCell>
-                                            <TableCell>
-                                                <Badge variant="secondary" className="font-normal">
+                                            <TableCell className="hidden sm:table-cell">
+                                                <Badge variant="secondary" className="font-normal truncate max-w-[120px] lg:max-w-[200px]">
                                                     {quote.template?.name || "Unknown"}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell className="text-right text-muted-foreground text-xs pr-4">
+                                            <TableCell className="hidden sm:table-cell text-right text-muted-foreground text-xs pr-4">
                                                 {new Date(quote.createdAt).toLocaleDateString(undefined, {
                                                     month: 'short', day: 'numeric', year: 'numeric'
                                                 })}
