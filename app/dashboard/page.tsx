@@ -1,16 +1,42 @@
-'use client'
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
+import prisma from "@/lib/prisma";
+import { redirect } from "next/navigation";
+import DashboardClient from "./client-page";
 
+export default async function DashboardPage() {
+  // 1. Authenticate Request
+  const reqHeaders = await headers();
+  const session = await auth.api.getSession({ headers: reqHeaders });
 
-export default function Dashboard() {
+  if (!session) {
+    redirect("/");
+  }
 
+  // 2. Fetch Data in Parallel for maximum performance
+  const [quotationsCount, templatesCount, recentQuotations, recentTemplates] = await Promise.all([
+    prisma.quotation.count({ where: { userId: session.user.id } }),
+    prisma.template.count({ where: { userId: session.user.id } }),
+    prisma.quotation.findMany({
+      where: { userId: session.user.id },
+      take: 5,
+      orderBy: { createdAt: "desc" },
+      include: { template: true }
+    }),
+    prisma.template.findMany({
+      where: { userId: session.user.id },
+      take: 3,
+      orderBy: { updatedAt: "desc" }
+    })
+  ]);
+
+  // 3. Render integrated Client view
   return (
-    <>
-      <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-        <div className="aspect-video rounded-xl bg-muted/50" />
-        <div className="aspect-video rounded-xl bg-muted/50" />
-        <div className="aspect-video rounded-xl bg-muted/50" />
-      </div>
-      <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
-    </>
-  )
+    <DashboardClient
+      user={{ name: session.user.name || "User", email: session.user.email }}
+      counts={{ quotations: quotationsCount, templates: templatesCount }}
+      recentQuotations={recentQuotations}
+      recentTemplates={recentTemplates}
+    />
+  );
 }

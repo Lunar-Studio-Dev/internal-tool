@@ -23,6 +23,14 @@ const data = {
   },
   navMain: [
     {
+      name: "Dashboard",
+      url: "/dashboard/dashboard",
+      icon: (
+        <TerminalSquareIcon
+        />
+      )
+    },
+    {
       name: "Quotations",
       url: "/dashboard/quotations",
       icon: (

@@ -1,8 +1,8 @@
+import { getQuotations } from "./actions";
+import QuotationsClient from "./client-page";
 
-export default function Page() {
-    return (
-        <div>
-            <h1>Quotation</h1>
-        </div>
-    )
+export default async function QuotationsPage() {
+    const quotations = await getQuotations();
+
+    return <QuotationsClient initialQuotations={quotations} />;
 }

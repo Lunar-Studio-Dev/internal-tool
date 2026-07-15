@@ -5,13 +5,22 @@ import { authClient } from "@/lib/auth-client";
 import { Mail, Lock, Loader2, ArrowRight, Sparkles, UserCircle, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+import { useUser } from "@/store/useUser";
+
 export default function AuthPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const {
+    email,
+    password,
+    isLoading,
+    error,
+    success,
+    setEmail,
+    setPassword,
+    setIsLoading,
+    setError,
+    setSuccess,
+    setAuthPayload
+  } = useUser();
 
   const router = useRouter();
 
@@ -22,19 +31,20 @@ export default function AuthPage() {
     setSuccess("");
 
     try {
-        const { data, error: authError } = await authClient.signIn.email({
-          email,
-          password,
-        });
+      const { data, error: authError } = await authClient.signIn.email({
+        email,
+        password,
+      });
 
-        if (authError) {
-          setError(authError.message || "Invalid credentials. Please try again.");
-        } else {
-          setSuccess("Successfully signed in!");
-          router.push("/dashboard")
-          // User is signed in! You can redirect here:
-          // window.location.href = "/dashboard"; 
-        }
+      if (authError) {
+        setError(authError.message || "Invalid credentials. Please try again.");
+      } else {
+        setSuccess("Successfully signed in!");
+        setAuthPayload(data.user, { token: data.token });
+        router.push("/dashboard")
+        // User is signed in! You can redirect here:
+        // window.location.href = "/dashboard"; 
+      }
     } catch (err) {
       setError("An unexpected error occurred.");
     } finally {
@@ -99,7 +109,7 @@ export default function AuthPage() {
                 {error}
               </div>
             )}
-            
+
             {success && (
               <div className="rounded-xl border border-green-500/20 bg-green-500/10 p-3 text-sm text-green-400">
                 {success}
@@ -114,7 +124,7 @@ export default function AuthPage() {
               <div className="absolute inset-0 flex h-full w-full justify-center [transform:skew(-12deg)_translateX(-100%)] group-hover:duration-1000 group-hover:[transform:skew(-12deg)_translateX(100%)]">
                 <div className="relative h-full w-8 bg-white/20" />
               </div>
-              
+
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (

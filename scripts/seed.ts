@@ -5,14 +5,9 @@ async function main() {
 
   const users = [
     {
-      email: "test@example.com",
-      password: "password123",
-      name: "Test User",
-    },
-    {
-      email: "admin@example.com",
-      password: "admin123",
-      name: "Admin User",
+      email: "disha@lunarstudio.dev",
+      password: "disha@lunarstudio.dev",
+      name: "Disha",
     },
   ];
 
