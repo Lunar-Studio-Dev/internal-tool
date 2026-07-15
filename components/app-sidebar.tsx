@@ -41,6 +41,14 @@ const data = {
         <TerminalSquareIcon
         />
       )
+    },
+    {
+      name: "Settings",
+      url: "/dashboard/settings",
+      icon: (
+        <Settings2Icon
+        />
+      )
     }
   ]
 }

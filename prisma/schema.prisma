@@ -77,12 +77,6 @@ model Verification {
   @@map("verification")
 }
 
-enum QuotationStatus {
-  PENDING
-  COMPLETED
-  FAILED
-}
-
 model Quotation {
   id String @id @default(cuid())
 

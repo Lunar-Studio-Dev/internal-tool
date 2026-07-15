@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Sparkles, Building2, CheckCircle2, AlignLeft } from "lucide-react";
+import { ArrowLeft, Sparkles, Building2, CheckCircle2, AlignLeft, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,25 +24,39 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Markdown } from "@/components/markdown";
 import { createQuotation } from "../actions";
+import { DEFAULT_GEMINI_MODEL } from "@/lib/ai-settings";
+import { useAiSettings } from "@/store/useAiSettings";
 
 const DEFAULT_MARKDOWN = `# Project Summary\nProvide a high-level overview of the client's needs here.\n\n## Detail Requirements\n- Custom UI/UX Design\n- User Authentication\n- Payment Gateway Integration\n\n## Timeline Estimate\n- Phase 1: 2 Weeks\n- Phase 2: 4 Weeks\n\n> "Client requires highly secure local hosting."\n`;
 
 export default function NewQuotationClient({ templates }: { templates: any[] }) {
     const router = useRouter();
+    const { ai_model_type, customModelId, getPayload, isCustomReady } = useAiSettings();
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
     const [templateId, setTemplateId] = useState<string>("");
     const [requirements, setRequirements] = useState(DEFAULT_MARKDOWN);
     const [isGenerating, setIsGenerating] = useState(false);
 
+    const modelLabel =
+        ai_model_type === "custom"
+            ? `Custom: ${customModelId || "not configured"}`
+            : `Default: ${DEFAULT_GEMINI_MODEL}`;
+
     const handleGenerate = async () => {
         try {
+            if (!isCustomReady()) {
+                toast.error("Configure a custom Gemini model and API key in Settings first.");
+                return;
+            }
+
             setIsGenerating(true);
             const result = await createQuotation({
                 name,
                 description,
                 requirements,
-                templateId
+                templateId,
+                aiSettings: getPayload(),
             });
 
             if (!result?.success) {
@@ -52,7 +66,6 @@ export default function NewQuotationClient({ templates }: { templates: any[] }) 
             }
 
             toast.success("Generating Qutation Please wait!!");
-            // Redirect smoothly back to the ledger upon success
             router.push("/dashboard/quotations");
         } catch (error) {
             console.error(error);
@@ -74,6 +87,15 @@ export default function NewQuotationClient({ templates }: { templates: any[] }) 
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">Generate Quotation</h1>
                         <p className="text-muted-foreground text-xs mt-0.5">Drafting client details into professional proposals.</p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-0.5">
+                                <Bot className="h-3 w-3 text-indigo-500" />
+                                {modelLabel}
+                            </span>
+                            <Link href="/dashboard/settings" className="text-indigo-600 hover:underline">
+                                Change in Settings
+                            </Link>
+                        </div>
                     </div>
                 </div>
 

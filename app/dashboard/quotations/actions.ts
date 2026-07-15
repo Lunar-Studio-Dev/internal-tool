@@ -7,6 +7,10 @@ import { revalidatePath } from "next/cache";
 import inngestClient from "@/inngest/client";
 import { getClientSubscriptionToken } from "inngest/react";
 import { quotationChannel } from "@/inngest/channels/quotation";
+import {
+  normalizeAiSettings,
+  type AiSettingsPayload,
+} from "@/lib/ai-settings";
 
 export async function getQuotations() {
   const reqHeaders = await headers();
@@ -28,6 +32,7 @@ export async function createQuotation(data: {
   description: string;
   requirements: string;
   templateId: string;
+  aiSettings?: AiSettingsPayload | { type?: string; modelId?: string; apiKey?: string };
 }) {
   try {
     const reqHeaders = await headers();
@@ -35,7 +40,12 @@ export async function createQuotation(data: {
 
     if (!session) throw new Error("Unauthorized");
 
-    // Fetch the chosen template to merge the final document
+    const normalized = normalizeAiSettings(data.aiSettings);
+    if (!normalized.ok) {
+      return { success: false, error: normalized.error };
+    }
+    const aiSettings = normalized.value;
+
     const template = await prisma.template.findUnique({
       where: { id: data.templateId, userId: session.user.id }
     });
@@ -44,7 +54,6 @@ export async function createQuotation(data: {
       throw new Error("Template not found or unauthorized.");
     }
 
-    // 1. Create the quotation row immediately with status: "pending"
     const quotation = await prisma.quotation.create({
       data: {
         name: data.name,
@@ -56,7 +65,6 @@ export async function createQuotation(data: {
       }
     });
 
-    // 2. Send the Inngest event with the DB row ID
     await inngestClient.send({
       name: "app/generate-quotation",
       data: {
@@ -64,6 +72,7 @@ export async function createQuotation(data: {
         template: template.content,
         requirements: data.requirements,
         quotationWebhookUrl: process.env.QUOTATION_WEBHOOK_URL ?? "http://localhost:3000/api/webhook/quotation",
+        aiSettings,
       }
     });
 
