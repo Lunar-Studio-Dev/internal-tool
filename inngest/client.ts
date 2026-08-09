@@ -6,7 +6,7 @@ let inngest: Inngest;
 
 function getInngestClient() {
     if (!inngest) {
-        inngest = new Inngest({ id: "documentations" });
+        inngest = new Inngest({ id: "internal-tool" });
     }
     return inngest;
 }
