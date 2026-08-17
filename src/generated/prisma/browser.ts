@@ -17,4 +17,12 @@ import * as Prisma from './internal/prismaNamespaceBrowser'
 export { Prisma }
 export * as $Enums from './enums'
 export * from './enums';
-
+/**
+ * Model TeamMember
+ * Domain profile for a person using the tool. Linked to a Neon Auth
+ * (neon_auth.user) identity via `authUserId` — a plain string, no cross-schema
+ * FK. Set at provisioning (auth.admin.createUser); null only for the manually
+ * inserted bootstrap admin until first sign-in. `roles` is an enum array — a
+ * member's roles live in one row. Members are never hard-deleted; they go INACTIVE.
+ */
+export type TeamMember = Prisma.TeamMemberModel

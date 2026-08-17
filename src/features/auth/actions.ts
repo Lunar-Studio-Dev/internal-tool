@@ -28,30 +28,42 @@ export async function signInAction(
   redirect(DASHBOARD);
 }
 
-export async function signUpAction(
-  _prev: AuthActionState,
-  formData: FormData,
-): Promise<AuthActionState> {
-  const name = String(formData.get("name") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-
-  if (!name || !email || !password) {
-    return { error: "Name, email, and password are required." };
-  }
-  if (password.length < 8) {
-    return { error: "Password must be at least 8 characters." };
-  }
-
-  const { error } = await auth.signUp.email({ name, email, password });
-  if (error) {
-    return { error: error.message ?? "Unable to create your account." };
-  }
-
-  redirect(DASHBOARD);
-}
-
 export async function signOutAction() {
   await auth.signOut();
   redirect(SIGN_IN);
+}
+
+export type ChangePasswordResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Change the signed-in user's password. Uses the current session cookie to
+ * identify the user; revokes other sessions so a leaked temporary password
+ * cannot keep an old session alive.
+ */
+export async function changePasswordAction(input: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<ChangePasswordResult> {
+  const currentPassword = String(input.currentPassword ?? "");
+  const newPassword = String(input.newPassword ?? "");
+
+  if (!currentPassword || !newPassword) {
+    return { ok: false, error: "Current and new passwords are required." };
+  }
+  if (newPassword.length < 8) {
+    return { ok: false, error: "New password must be at least 8 characters." };
+  }
+  if (newPassword === currentPassword) {
+    return { ok: false, error: "New password must be different from the current one." };
+  }
+
+  const { error } = await auth.changePassword({
+    currentPassword,
+    newPassword,
+    revokeOtherSessions: true,
+  });
+  if (error) {
+    return { ok: false, error: error.message ?? "Could not change your password." };
+  }
+  return { ok: true };
 }

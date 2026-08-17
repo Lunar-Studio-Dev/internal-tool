@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState } from "react";
 import { Loader2Icon } from "lucide-react";
 
@@ -62,11 +61,8 @@ export function SignInForm() {
               "Sign in"
             )}
           </Button>
-          <p className="text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link href="/auth/sign-up" className="text-foreground underline underline-offset-4">
-              Sign up
-            </Link>
+          <p className="text-center text-xs text-muted-foreground">
+            Accounts are created by an administrator. Contact your admin if you need access.
           </p>
         </CardFooter>
       </form>

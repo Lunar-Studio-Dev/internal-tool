@@ -132,7 +132,7 @@ if (process.env.NODE_ENV !== "production") g.prisma = db;
 
 ## 6. Environment Variables
 
-Update `.env.example` (and local `.env`) to match the real stack. The starter file still references Better Auth — replace it.
+Update `.env.example` (and local `.env`) to match the real stack. Auth is **Neon Managed Better Auth** (`@neondatabase/auth`) — values come from the Neon console (Auth → Configuration); see PHASE_2.
 
 ```dotenv
 # Database (Neon pooled connection string)
@@ -141,10 +141,14 @@ DATABASE_URL=
 # App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
-# Neon Auth (see PHASE_2 — values come from the Neon console "Enable Auth")
-NEXT_PUBLIC_STACK_PROJECT_ID=
-NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=
-STACK_SECRET_SERVER_KEY=
+# Neon Auth = Managed Better Auth (see PHASE_2 — Neon console → Auth → Configuration)
+NEON_AUTH_BASE_URL=
+NEON_AUTH_COOKIE_SECRET=
+
+# Transactional email — Resend (PHASE_3 member-invite temp passwords).
+# If RESEND_API_KEY is blank, invites are not emailed and the admin shares the temp password manually.
+RESEND_API_KEY=
+EMAIL_FROM="Lunar Studio <onboarding@resend.dev>"
 
 # Inngest (PHASE_12 workflows; dev server needs no keys locally)
 INNGEST_EVENT_KEY=
@@ -169,8 +173,10 @@ import { z } from "zod";
 const schema = z.object({
   DATABASE_URL: z.string().url(),
   NEXT_PUBLIC_APP_URL: z.string().url(),
-  NEXT_PUBLIC_STACK_PROJECT_ID: z.string().optional(),
-  STACK_SECRET_SERVER_KEY: z.string().optional(),
+  NEON_AUTH_BASE_URL: z.string().min(1).optional(),
+  NEON_AUTH_COOKIE_SECRET: z.string().min(32).optional(),
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().min(1).default("Lunar Studio <onboarding@resend.dev>"),
   R2_ACCOUNT_ID: z.string().optional(),
   R2_BUCKET: z.string().optional(),
   AI_GATEWAY_API_KEY: z.string().optional(),
@@ -192,7 +198,7 @@ internal-tool/
 ├─ prisma.config.ts
 ├─ src/
 │  ├─ app/
-│  │  ├─ (auth)/               # PHASE_2: sign-in / sign-up route group
+│  │  ├─ auth/                # PHASE_2: sign-in / sign-up pages
 │  │  ├─ (app)/                # authenticated shell + all product pages
 │  │  │  ├─ layout.tsx         # sidebar + header shell (PHASE_2)
 │  │  │  ├─ dashboard/
@@ -207,7 +213,7 @@ internal-tool/
 │  │  ├─ api/
 │  │  │  ├─ inngest/route.ts   # Inngest serve handler
 │  │  │  ├─ r2/route.ts        # presigned upload/download (PHASE_6)
-│  │  │  └─ handler/[...stack]/route.ts  # Neon Auth handler (PHASE_2)
+│  │  │  └─ auth/[...path]/route.ts  # Neon Auth (Managed Better Auth) handler (PHASE_2)
 │  │  ├─ layout.tsx            # root: providers + fonts + globals.css
 │  │  └─ globals.css           # Tailwind v4 @import + @theme tokens
 │  ├─ features/
@@ -228,7 +234,7 @@ internal-tool/
 │  ├─ lib/
 │  │  ├─ db.ts                 # Prisma client singleton (Neon adapter)
 │  │  ├─ env.ts                # Zod-validated env
-│  │  ├─ auth.ts               # Neon Auth server helpers (PHASE_2)
+│  │  ├─ auth/                # Neon Auth: server.ts (createNeonAuth) + session.ts (PHASE_2)
 │  │  ├─ rbac.ts               # role → permission checks (PHASE_3)
 │  │  ├─ activity.ts           # logActivity() audit helper (PHASE_4)
 │  │  ├─ r2.ts                 # R2 S3 client + presign (PHASE_6)

@@ -20,7 +20,7 @@ const config: runtime.GetPrismaClientConfig = {
   "clientVersion": "7.9.1",
   "engineVersion": "e922089b7d7502aff4249d5da3420f6fa55fc6ad",
   "activeProvider": "postgresql",
-  "inlineSchema": "// Lunar Studio — Client Management Tool\n// Models are introduced phase by phase (PHASE_3 onward).\n\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../src/generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n}\n",
+  "inlineSchema": "// Lunar Studio — Client Management Tool\n// Models are introduced phase by phase (PHASE_3 onward).\n\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../src/generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n}\n\n// ─── PHASE_3 — Team Members & Roles (RBAC) ───\n\nenum RoleName {\n  ADMIN\n  CLIENT_MANAGER\n  BUSINESS_ANALYST\n  SALES\n  FINANCE\n  DEVELOPER\n  PROJECT_MANAGER\n}\n\nenum MemberStatus {\n  ACTIVE\n  INACTIVE\n  PENDING\n}\n\n/// Domain profile for a person using the tool. Linked to a Neon Auth\n/// (neon_auth.user) identity via `authUserId` — a plain string, no cross-schema\n/// FK. Set at provisioning (auth.admin.createUser); null only for the manually\n/// inserted bootstrap admin until first sign-in. `roles` is an enum array — a\n/// member's roles live in one row. Members are never hard-deleted; they go INACTIVE.\nmodel TeamMember {\n  id         String       @id @default(cuid())\n  authUserId String?      @unique\n  name       String\n  email      String       @unique\n  phone      String?\n  image      String?\n  roles      RoleName[]\n  status     MemberStatus @default(ACTIVE)\n  createdAt  DateTime     @default(now())\n  updatedAt  DateTime     @updatedAt\n\n  @@map(\"team_member\")\n}\n",
   "runtimeDataModel": {
     "models": {},
     "enums": {},
@@ -32,10 +32,10 @@ const config: runtime.GetPrismaClientConfig = {
   }
 }
 
-config.runtimeDataModel = JSON.parse("{\"models\":{},\"enums\":{},\"types\":{}}")
+config.runtimeDataModel = JSON.parse("{\"models\":{\"TeamMember\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"authUserId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"phone\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"image\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"roles\",\"kind\":\"enum\",\"type\":\"RoleName\"},{\"name\":\"status\",\"kind\":\"enum\",\"type\":\"MemberStatus\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":\"team_member\"}},\"enums\":{},\"types\":{}}")
 config.parameterizationSchema = {
-  strings: JSON.parse("[]"),
-  graph: "AAAA"
+  strings: JSON.parse("[\"where\",\"TeamMember.findUnique\",\"TeamMember.findUniqueOrThrow\",\"orderBy\",\"cursor\",\"TeamMember.findFirst\",\"TeamMember.findFirstOrThrow\",\"TeamMember.findMany\",\"data\",\"TeamMember.createOne\",\"TeamMember.createMany\",\"TeamMember.createManyAndReturn\",\"TeamMember.updateOne\",\"TeamMember.updateMany\",\"TeamMember.updateManyAndReturn\",\"create\",\"update\",\"TeamMember.upsertOne\",\"TeamMember.deleteOne\",\"TeamMember.deleteMany\",\"having\",\"_count\",\"_min\",\"_max\",\"TeamMember.groupBy\",\"TeamMember.aggregate\",\"AND\",\"OR\",\"NOT\",\"id\",\"authUserId\",\"name\",\"email\",\"phone\",\"image\",\"roles\",\"MemberStatus\",\"status\",\"createdAt\",\"updatedAt\",\"equals\",\"in\",\"notIn\",\"lt\",\"lte\",\"gt\",\"gte\",\"not\",\"RoleName\",\"has\",\"hasEvery\",\"hasSome\",\"contains\",\"startsWith\",\"endsWith\",\"set\",\"push\"]"),
+  graph: "OAkQDRoAACoAMBsAAAQAEBwAACoAMB0BAAAAAR4BAAAAAR8BACsAISABAAAAASEBACwAISIBACwAISMAAB0AICUAAC0lIiZAAC4AISdAAC4AIQEAAAABACABAAAAAQAgDRoAACoAMBsAAAQAEBwAACoAMB0BACsAIR4BACwAIR8BACsAISABACsAISEBACwAISIBACwAISMAAB0AICUAAC0lIiZAAC4AISdAAC4AIQMeAAAvACAhAAAvACAiAAAvACADAAAABAAgAwAABQAwBAAAAQAgAwAAAAQAIAMAAAUAMAQAAAEAIAMAAAAEACADAAAFADAEAAABACAKHQEAAAABHgEAAAABHwEAAAABIAEAAAABIQEAAAABIgEAAAABIwAAOAAgJQAAACUCJkAAAAABJ0AAAAABAQgAAAkAIAodAQAAAAEeAQAAAAEfAQAAAAEgAQAAAAEhAQAAAAEiAQAAAAEjAAA4ACAlAAAAJQImQAAAAAEnQAAAAAEBCAAACwAwAQgAAAsAMAodAQAzACEeAQA0ACEfAQAzACEgAQAzACEhAQA0ACEiAQA0ACEjAAA1ACAlAAA2JSImQAA3ACEnQAA3ACECAAAAAQAgCAAADgAgCh0BADMAIR4BADQAIR8BADMAISABADMAISEBADQAISIBADQAISMAADUAICUAADYlIiZAADcAISdAADcAIQIAAAAEACAIAAAQACACAAAABAAgCAAAEAAgAwAAAAEAIA8AAAkAIBAAAA4AIAEAAAABACABAAAABAAgBhUAADAAIBYAADIAIBcAADEAIB4AAC8AICEAAC8AICIAAC8AIA0aAAAaADAbAAAXABAcAAAaADAdAQAbACEeAQAcACEfAQAbACEgAQAbACEhAQAcACEiAQAcACEjAAAdACAlAAAeJSImQAAfACEnQAAfACEDAAAABAAgAwAAFgAwFAAAFwAgAwAAAAQAIAMAAAUAMAQAAAEAIA0aAAAaADAbAAAXABAcAAAaADAdAQAbACEeAQAcACEfAQAbACEgAQAbACEhAQAcACEiAQAcACEjAAAdACAlAAAeJSImQAAfACEnQAAfACEOFQAAIQAgFgAAKQAgFwAAKQAgKAEAAAABKQEAAAAEKgEAAAAEKwEAAAABLAEAAAABLQEAAAABLgEAAAABLwEAKAAhNAEAAAABNQEAAAABNgEAAAABDhUAACYAIBYAACcAIBcAACcAICgBAAAAASkBAAAABSoBAAAABSsBAAAAASwBAAAAAS0BAAAAAS4BAAAAAS8BACUAITQBAAAAATUBAAAAATYBAAAAAQQoAAAAMQkxAAAAMQMyAAAAMQgzAAAAMQgHFQAAIQAgFgAAJAAgFwAAJAAgKAAAACUCKQAAACUIKgAAACUILwAAIyUiCxUAACEAIBYAACIAIBcAACIAIChAAAAAASlAAAAABCpAAAAABCtAAAAAASxAAAAAAS1AAAAAAS5AAAAAAS9AACAAIQsVAAAhACAWAAAiACAXAAAiACAoQAAAAAEpQAAAAAQqQAAAAAQrQAAAAAEsQAAAAAEtQAAAAAEuQAAAAAEvQAAgACEIKAIAAAABKQIAAAAEKgIAAAAEKwIAAAABLAIAAAABLQIAAAABLgIAAAABLwIAIQAhCChAAAAAASlAAAAABCpAAAAABCtAAAAAASxAAAAAAS1AAAAAAS5AAAAAAS9AACIAIQcVAAAhACAWAAAkACAXAAAkACAoAAAAJQIpAAAAJQgqAAAAJQgvAAAjJSIEKAAAACUCKQAAACUIKgAAACUILwAAJCUiDhUAACYAIBYAACcAIBcAACcAICgBAAAAASkBAAAABSoBAAAABSsBAAAAASwBAAAAAS0BAAAAAS4BAAAAAS8BACUAITQBAAAAATUBAAAAATYBAAAAAQgoAgAAAAEpAgAAAAUqAgAAAAUrAgAAAAEsAgAAAAEtAgAAAAEuAgAAAAEvAgAmACELKAEAAAABKQEAAAAFKgEAAAAFKwEAAAABLAEAAAABLQEAAAABLgEAAAABLwEAJwAhNAEAAAABNQEAAAABNgEAAAABDhUAACEAIBYAACkAIBcAACkAICgBAAAAASkBAAAABCoBAAAABCsBAAAAASwBAAAAAS0BAAAAAS4BAAAAAS8BACgAITQBAAAAATUBAAAAATYBAAAAAQsoAQAAAAEpAQAAAAQqAQAAAAQrAQAAAAEsAQAAAAEtAQAAAAEuAQAAAAEvAQApACE0AQAAAAE1AQAAAAE2AQAAAAENGgAAKgAwGwAABAAQHAAAKgAwHQEAKwAhHgEALAAhHwEAKwAhIAEAKwAhIQEALAAhIgEALAAhIwAAHQAgJQAALSUiJkAALgAhJ0AALgAhCygBAAAAASkBAAAABCoBAAAABCsBAAAAASwBAAAAAS0BAAAAAS4BAAAAAS8BACkAITQBAAAAATUBAAAAATYBAAAAAQsoAQAAAAEpAQAAAAUqAQAAAAUrAQAAAAEsAQAAAAEtAQAAAAEuAQAAAAEvAQAnACE0AQAAAAE1AQAAAAE2AQAAAAEEKAAAACUCKQAAACUIKgAAACUILwAAJCUiCChAAAAAASlAAAAABCpAAAAABCtAAAAAASxAAAAAAS1AAAAAAS5AAAAAAS9AACIAIQAAAAABNwEAAAABATcBAAAAAQI3AAAAMQg4AAAAMQIBNwAAACUCATdAAAAAAQE3AAAAMQgAAAAAAxUABhYABxcACAAAAAMVAAYWAAcXAAgBAgECAwEFBgEGBwEHCAEJCgEKDAILDQMMDwENEQIOEgQREwESFAETFQIYGAUZGQk"
 }
 
 async function decodeBase64AsWasm(wasmBase64: string): Promise<WebAssembly.Module> {
@@ -70,8 +70,8 @@ export interface PrismaClientConstructor {
    * const prisma = new PrismaClient({
    *   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL })
    * })
-   * // Fetch zero or more Users
-   * const users = await prisma.user.findMany()
+   * // Fetch zero or more TeamMembers
+   * const teamMembers = await prisma.teamMember.findMany()
    * ```
    * 
    * Read more in our [docs](https://pris.ly/d/client).
@@ -94,8 +94,8 @@ export interface PrismaClientConstructor {
  * const prisma = new PrismaClient({
  *   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL })
  * })
- * // Fetch zero or more Users
- * const users = await prisma.user.findMany()
+ * // Fetch zero or more TeamMembers
+ * const teamMembers = await prisma.teamMember.findMany()
  * ```
  * 
  * Read more in our [docs](https://pris.ly/d/client).
@@ -188,7 +188,15 @@ export interface PrismaClient<
     extArgs: ExtArgs
   }>>
 
-    
+      /**
+   * `prisma.teamMember`: Exposes CRUD operations for the **TeamMember** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more TeamMembers
+    * const teamMembers = await prisma.teamMember.findMany()
+    * ```
+    */
+  get teamMember(): Prisma.TeamMemberDelegate<ExtArgs, { omit: OmitOpts }>;
 }
 
 export function getPrismaClientClass(): PrismaClientConstructor {

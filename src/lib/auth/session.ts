@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth/server";
@@ -11,10 +12,12 @@ import { auth } from "@/lib/auth/server";
  * because the session is derived from cookies.
  */
 
-export async function getSession() {
+// Cached per request so multiple callers (requireUser, getCurrentMember, ...)
+// share a single session lookup.
+export const getSession = cache(async () => {
   const { data } = await auth.getSession();
   return data ?? null;
-}
+});
 
 export async function getCurrentUser() {
   const session = await getSession();

@@ -1,8 +1,15 @@
 "use client";
 
-import { useTransition } from "react";
-import { ChevronsUpDownIcon, LogOutIcon, SettingsIcon, UserIcon } from "lucide-react";
+import { useState, useTransition } from "react";
+import {
+  ChevronsUpDownIcon,
+  KeyRoundIcon,
+  LogOutIcon,
+  SettingsIcon,
+  UserIcon,
+} from "lucide-react";
 
+import { ChangePasswordDialog } from "@/features/auth/components/change-password-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -20,23 +27,23 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { signOutAction } from "@/features/auth/actions";
-
-export type SessionUser = {
-  name?: string | null;
-  email?: string | null;
-  image?: string | null;
-};
+import { ROLE_LABELS } from "@/features/team/constants";
+import { useCurrentMember } from "@/features/team/hooks/use-current-member";
 
 function initialsOf(name: string) {
   const parts = name.trim().split(/\s+/).slice(0, 2);
   return parts.map((part) => part[0]?.toUpperCase() ?? "").join("") || "U";
 }
 
-export function UserMenu({ user }: { user: SessionUser }) {
+export function UserMenu() {
   const { isMobile } = useSidebar();
   const [isPending, startTransition] = useTransition();
-  const name = user.name || "User";
-  const email = user.email ?? "";
+  const [pwOpen, setPwOpen] = useState(false);
+  const member = useCurrentMember();
+
+  const name = member.name || "User";
+  const email = member.email;
+  const roles = member.roleNames.map((role) => ROLE_LABELS[role]).join(" · ");
 
   return (
     <SidebarMenu>
@@ -45,7 +52,7 @@ export function UserMenu({ user }: { user: SessionUser }) {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
               <Avatar className="size-8 rounded-lg">
-                {user.image ? <AvatarImage src={user.image} alt={name} /> : null}
+                {member.image ? <AvatarImage src={member.image} alt={name} /> : null}
                 <AvatarFallback className="rounded-lg">{initialsOf(name)}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
@@ -56,14 +63,19 @@ export function UserMenu({ user }: { user: SessionUser }) {
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+            className="w-(--radix-dropdown-menu-trigger-width) min-w-60 rounded-lg"
             side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={4}
           >
-            <DropdownMenuLabel className="flex flex-col">
+            <DropdownMenuLabel className="flex flex-col gap-0.5">
               <span className="truncate font-medium">{name}</span>
               <span className="truncate text-xs font-normal text-muted-foreground">{email}</span>
+              {roles ? (
+                <span className="truncate pt-1 text-xs font-normal text-muted-foreground">
+                  {roles}
+                </span>
+              ) : null}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
@@ -74,6 +86,16 @@ export function UserMenu({ user }: { user: SessionUser }) {
               <DropdownMenuItem disabled>
                 <SettingsIcon className="size-4" />
                 Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={(event) => {
+                  event.preventDefault();
+                  // Defer so the dropdown finishes closing before the dialog opens.
+                  setTimeout(() => setPwOpen(true), 0);
+                }}
+              >
+                <KeyRoundIcon className="size-4" />
+                Change password
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
@@ -91,6 +113,7 @@ export function UserMenu({ user }: { user: SessionUser }) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <ChangePasswordDialog open={pwOpen} onOpenChange={setPwOpen} />
       </SidebarMenuItem>
     </SidebarMenu>
   );

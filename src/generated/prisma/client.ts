@@ -31,8 +31,8 @@ export * from "./enums"
  * const prisma = new PrismaClient({
  *   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL })
  * })
- * // Fetch zero or more Users
- * const users = await prisma.user.findMany()
+ * // Fetch zero or more TeamMembers
+ * const teamMembers = await prisma.teamMember.findMany()
  * ```
  * 
  * Read more in our [docs](https://pris.ly/d/client).
@@ -41,4 +41,12 @@ export const PrismaClient = $Class.getPrismaClientClass()
 export type PrismaClient<LogOpts extends Prisma.LogLevel = never, OmitOpts extends Prisma.PrismaClientOptions["omit"] = Prisma.PrismaClientOptions["omit"], ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = $Class.PrismaClient<LogOpts, OmitOpts, ExtArgs>
 export { Prisma }
 
-
+/**
+ * Model TeamMember
+ * Domain profile for a person using the tool. Linked to a Neon Auth
+ * (neon_auth.user) identity via `authUserId` — a plain string, no cross-schema
+ * FK. Set at provisioning (auth.admin.createUser); null only for the manually
+ * inserted bootstrap admin until first sign-in. `roles` is an enum array — a
+ * member's roles live in one row. Members are never hard-deleted; they go INACTIVE.
+ */
+export type TeamMember = Prisma.TeamMemberModel

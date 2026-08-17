@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
  */
 export type StatusKind =
   | "ACTIVE"
+  | "INACTIVE"
   | "PROMOTED"
   | "DEACTIVATED"
   | "REACTIVATED"
@@ -24,6 +25,7 @@ export type StatusKind =
 
 const STYLES: Record<StatusKind, string> = {
   ACTIVE: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+  INACTIVE: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
   PROMOTED: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
   DEACTIVATED: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
   REACTIVATED: "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300",

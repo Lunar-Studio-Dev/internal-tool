@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SparklesIcon } from "lucide-react";
 
 import { NAV_ITEMS } from "@/components/layout/nav";
-import { UserMenu, type SessionUser } from "@/components/layout/user-menu";
+import { UserMenu } from "@/components/layout/user-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -18,9 +17,19 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { useCurrentMember } from "@/features/team/hooks/use-current-member";
+import { can } from "@/lib/rbac";
+import Image from "next/image";
 
-export function AppSidebar({ user }: { user: SessionUser }) {
+export function AppSidebar() {
   const pathname = usePathname();
+  const member = useCurrentMember();
+
+  const items = NAV_ITEMS.filter(
+    (item) =>
+      !item.permission ||
+      can({ isAdmin: member.isAdmin, roleNames: member.roleNames }, item.permission),
+  );
 
   return (
     <Sidebar collapsible="icon">
@@ -30,7 +39,7 @@ export function AppSidebar({ user }: { user: SessionUser }) {
             <SidebarMenuButton size="lg" asChild>
               <Link href="/dashboard">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <SparklesIcon className="size-4" />
+                  <Image src={"/logo.png"} width={16} height={16} alt="Lunar Studio Logo" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Lunar Studio</span>
@@ -45,7 +54,7 @@ export function AppSidebar({ user }: { user: SessionUser }) {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.map((item) => {
+              {items.map((item) => {
                 const isActive =
                   pathname === item.href || pathname.startsWith(`${item.href}/`);
                 return (
@@ -64,7 +73,7 @@ export function AppSidebar({ user }: { user: SessionUser }) {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <UserMenu user={user} />
+        <UserMenu />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

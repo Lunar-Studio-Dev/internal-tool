@@ -4,14 +4,14 @@
 
 ## 1. Objective
 
-Gate the app behind Neon Auth, sync authenticated users into Postgres, and build the common application shell: collapsible sidebar navigation, top bar (global search slot, notifications bell, quick "+ New", user menu), page-header, breadcrumb, and the shared status/table/stepper primitives that later phases reuse.
+Gate the app behind **Neon Auth (Managed Better Auth)** — whose users/sessions live in the `neon_auth` schema of your Postgres DB — and build the common application shell: collapsible sidebar navigation, top bar (global search slot, notifications bell, quick "+ New", user menu), page-header, breadcrumb, and the shared status/table/stepper primitives that later phases reuse.
 
 ## 2. Scope of Work (In Scope)
 
-- Integrate **Neon Auth** (Stack-Auth based): handler route, provider, middleware, sign-in / sign-up / user-button.
-- Protect the `(app)` route group; redirect unauthenticated users to sign-in.
-- Expose server + client helpers to read the current user (`lib/auth.ts`).
-- Confirm the Neon Auth `neon_auth.users_sync` table is queryable (basis for Team Members in PHASE_3).
+- Integrate **Neon Auth (Managed Better Auth, `@neondatabase/auth`)**: a `createNeonAuth` server instance, the `api/auth/[...path]` handler, `src/proxy.ts` route protection, and custom shadcn sign-in / sign-up screens driven by server actions.
+- Protect the `(app)` route group via `src/proxy.ts`; redirect unauthenticated users to `/auth/sign-in`.
+- Expose server helpers to read the current user (`lib/auth/server.ts` + `lib/auth/session.ts`).
+- Confirm the Neon Auth identity tables in the `neon_auth` schema (esp. `neon_auth.user`) — the basis for Team Members in PHASE_3.
 - Build the shell: `components/layout/{app-sidebar,app-header,user-menu,nav}.tsx` (WF-01, WF-02, WF-57).
 - Build shared primitives in `components/common/`: `StatusBadge` (WF-03), `DataTable` (WF-05), `PipelineStepper` (WF-04), `PageHeader`, `EmptyState`.
 - Theme tokens + dark mode toggle.
@@ -19,22 +19,22 @@ Gate the app behind Neon Auth, sync authenticated users into Postgres, and build
 ## 3. Requirements
 
 ### Functional
-1. Visiting any `(app)` route while signed out redirects to `/sign-in` with a return URL.
+1. Visiting any `(app)` route while signed out redirects to `/auth/sign-in`.
 2. After sign-in, the user lands on `/dashboard` inside the shell.
 3. Sidebar lists: Dashboard, Businesses, Pipelines, To-Dos, Resources, Accounts, Team Members, Analytics, Settings; active route is highlighted; sidebar collapses.
 4. Top bar shows global search (opens command palette — real search in PHASE_12), notifications bell (badge count wired in PHASE_12), "+ New" quick menu, and the user menu (name, roles, profile, sign out) per WF-57.
-5. On first sign-in, the user is present in `neon_auth.users_sync` (managed by Neon Auth).
+5. On first sign-in, the user is present in `neon_auth.user` (managed by Neon Auth).
 
 ### Non-Functional
-- Auth checks run in middleware AND server components (defense in depth); never rely on client-only guards.
+- Auth checks run in `src/proxy.ts` AND server components (defense in depth); never rely on client-only guards.
 - Shell is responsive (sidebar → sheet on mobile) and keyboard accessible; command palette on ⌘K/Ctrl-K.
 - No layout shift between server-rendered shell and hydration.
 
 ## 4. End-to-End User Flow
 
 ```text
-Unauthenticated → /sign-in ──(Neon Auth)──▶ session established
-        └─ user synced into neon_auth.users_sync
+Unauthenticated → /auth/sign-in ──(Neon Auth)──▶ session established
+        └─ user stored in neon_auth.user
    ▼
 /dashboard (inside shell)
    ├─ Sidebar navigation ──▶ section pages
@@ -91,39 +91,59 @@ Unauthenticated → /sign-in ──(Neon Auth)──▶ session established
 
 ## 6. Technical Design / Architecture
 
-### Neon Auth wiring
-Enable Auth in the Neon console (Auth → Enable), copy the three keys into `.env`. Neon Auth provisions a synced identity table `neon_auth.users_sync` in your database. Install and initialize the SDK (Stack-Auth based) — the console's setup wizard prints the exact package/commands; verify against the current Neon Auth Next.js quick-start.
+### Neon Auth wiring (Managed Better Auth)
+Enable Auth in the Neon console (Auth → Configuration), then set `NEON_AUTH_BASE_URL` and `NEON_AUTH_COOKIE_SECRET` (32+ chars) in `.env`. Auth data (users, sessions) lives in the `neon_auth` schema of your Neon database. Install `@neondatabase/auth` and create a single server instance with `createNeonAuth`.
+
+> **Console prerequisites (required by PHASE_3 provisioning):** keep **email/password** sign-in enabled and **require email verification OFF** (members sign in with a temporary password, not a verification link), and add your app origins (e.g. `http://localhost:3000`) to **Trusted domains**. Magic-link is **not** used. Outbound invite emails are sent by **our app via Resend** (`RESEND_API_KEY`), not by Neon. The **admin API** (`auth.admin.createUser`, `auth.admin.setUserPassword`, `auth.admin.listUsers`) requires the caller's `neon_auth.user.role = 'admin'` — set that on the bootstrap admin (Console → Auth → Users → Make admin) before using PHASE_3's Add-Member flow.
 
 ```text
-src/app/handler/[...stack]/route.ts   # Neon Auth catch-all handler
-src/app/(auth)/sign-in/[[...rest]]/page.tsx
-src/app/(auth)/sign-up/[[...rest]]/page.tsx
-src/lib/auth.ts                        # server helpers: getCurrentUser(), requireUser()
-src/middleware.ts                      # protect (app)/* , allow (auth)/* and /handler/*
+src/lib/auth/server.ts                 # createNeonAuth({ baseUrl, cookies:{ secret } }) → auth
+src/lib/auth/session.ts                # getSession(), getCurrentUser(), requireUser()
+src/app/api/auth/[...path]/route.ts    # export const { GET, POST } = auth.handler()
+src/proxy.ts                           # Next 16 route protection: auth.middleware({ loginUrl:"/auth/sign-in" })
+src/app/auth/layout.tsx                # centered auth shell
+src/app/auth/sign-in/page.tsx          # custom shadcn form → server action (auth.signIn.email)
+src/app/auth/sign-up/page.tsx          # custom shadcn form → server action (auth.signUp.email)
+src/features/auth/actions.ts           # signInAction / signUpAction / signOutAction
 ```
 
+> Auth screens are **custom shadcn forms + server actions**, not `@neondatabase/auth-ui`. The auth-ui `NeonAuthUIProvider` renders its own next-themes `ThemeProvider`, which would double-nest with our theme provider — so we call the Better Auth server methods directly and keep a single theme authority.
+
 ```ts
-// src/lib/auth.ts  (shape — align imports with the Neon Auth SDK you install)
+// src/lib/auth/server.ts
+import "server-only";
+import { createNeonAuth } from "@neondatabase/auth/next/server";
+
+export const auth = createNeonAuth({
+  baseUrl: process.env.NEON_AUTH_BASE_URL!,
+  cookies: { secret: process.env.NEON_AUTH_COOKIE_SECRET! },
+});
+
+// src/lib/auth/session.ts
 import "server-only";
 import { redirect } from "next/navigation";
-import { stackServerApp } from "@/lib/stack";     // configured StackServerApp
+import { auth } from "@/lib/auth/server";
 
+export async function getSession() {
+  const { data } = await auth.getSession();
+  return data ?? null;
+}
 export async function getCurrentUser() {
-  return stackServerApp.getUser();                 // null if signed out
+  return (await getSession())?.user ?? null;       // null if signed out
 }
 export async function requireUser() {
   const user = await getCurrentUser();
-  if (!user) redirect("/sign-in");
-  return user;                                     // has id === users_sync.id
+  if (!user) redirect("/auth/sign-in");
+  return user;                                     // user.id === neon_auth.user.id
 }
 ```
 
-- **Identity vs domain profile:** Neon Auth owns authentication + the `users_sync` row (id, email, name, avatar). PHASE_3's `TeamMember` extends it with roles/status via `authUserId` FK. Do not duplicate auth fields into the domain DB.
-- **Middleware** guards `(app)/*`; server components additionally call `requireUser()` so no unguarded data path exists.
+- **Identity vs domain profile:** Neon Auth owns authentication + the `neon_auth.user` row (id, email, name, image). PHASE_3's `TeamMember` extends it with roles/status, linking via a plain `authUserId` string = `neon_auth.user.id` (no cross-schema FK; Neon manages `neon_auth`). Do not duplicate auth fields into the domain DB beyond the domain-owned profile.
+- **`src/proxy.ts`** guards `(app)/*` (matcher excludes `/auth`, `/api/auth`, `/api/inngest`, static); server components additionally call `requireUser()` so no unguarded data path exists. Server Actions pass through the proxy (they enforce auth themselves).
 
 ### Shell composition
 ```text
-src/app/layout.tsx            → <StackProvider><QueryProvider><ThemeProvider>{children}
+src/app/layout.tsx            → <Providers>{children}   (Providers = ThemeProvider → QueryProvider → TooltipProvider + Toaster; auth needs no client provider)
 src/app/(app)/layout.tsx      → requireUser(); <AppSidebar/> + <AppHeader/> + <main>{children}</main>
 components/layout/app-sidebar.tsx   → nav config array → active-link highlighting
 components/layout/app-header.tsx    → <GlobalSearchTrigger/> <NotificationsBell/> <QuickNew/> <UserMenu/>
@@ -145,8 +165,8 @@ export function StatusBadge({ kind }: { kind: StatusKind }) { /* Badge + color m
 
 ## 7. Definition of Done
 
-- Signed-out access to `/dashboard` redirects to `/sign-in`; successful auth returns to the shell.
-- A new sign-up appears in `neon_auth.users_sync` (verify with a quick `db` query).
+- Signed-out access to `/dashboard` redirects to `/auth/sign-in`; successful auth returns to the shell.
+- A new sign-up appears in `neon_auth.user` (verify with a quick query).
 - Sidebar + header render on every `(app)` route; active nav item highlighted; mobile sidebar works.
 - User menu shows real name/email from the session and signs out.
 - `StatusBadge`, `DataTable`, `PipelineStepper`, `PageHeader`, `EmptyState` exist, typed, and storybook-free smoke-rendered on a scratch page.
@@ -157,10 +177,10 @@ export function StatusBadge({ kind }: { kind: StatusKind }) { /* Badge + color m
 - Do **not** hand-roll password auth, sessions, or JWTs — Neon Auth owns identity.
 - Do **not** model roles/permissions yet (PHASE_3) beyond reading the session.
 - Do **not** implement real global search, notifications, or "+ New" targets (stub triggers; wired in later phases).
-- Do **not** put business data in the auth/users_sync table.
+- Do **not** put business data in the `neon_auth` tables (they are managed by Neon Auth).
 - Do **not** guard routes on the client only.
 
 ## 9. Dependencies / Enables
 
 - **Depends on:** PHASE_1.
-- **Enables:** PHASE_3 (Team & Roles read `users_sync`), and every UI phase (renders inside this shell and reuses the common primitives).
+- **Enables:** PHASE_3 (Team & Roles link to `neon_auth.user`), and every UI phase (renders inside this shell and reuses the common primitives).
