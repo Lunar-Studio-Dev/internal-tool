@@ -1,120 +1,49 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Lunar Studio — Client Management Tool
+// Models are introduced phase by phase (PHASE_3 onward).
 
 generator client {
   provider = "prisma-client"
-  output   = "../generated/prisma"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id            String      @id
-  name          String
-  email         String
-  emailVerified Boolean     @default(false)
-  image         String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  sessions      Session[]
-  accounts      Account[]
-  quotations    Quotation[]
-  templates     Template[]
+// ─── PHASE_3 — Team Members & Roles (RBAC) ───
 
-  @@unique([email])
-  @@map("user")
+enum RoleName {
+  ADMIN
+  CLIENT_MANAGER
+  BUSINESS_ANALYST
+  SALES
+  FINANCE
+  DEVELOPER
+  PROJECT_MANAGER
 }
 
-model Session {
-  id        String   @id
-  expiresAt DateTime
-  token     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([token])
-  @@index([userId])
-  @@map("session")
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
 }
 
-model Account {
-  id                    String    @id
-  accountId             String
-  providerId            String
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accessToken           String?
-  refreshToken          String?
-  idToken               String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
-  scope                 String?
-  password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+/// Domain profile for a person using the tool. Linked to a Neon Auth
+/// (neon_auth.user) identity via `authUserId` — a plain string, no cross-schema
+/// FK. Set at provisioning (auth.admin.createUser); null only for the manually
+/// inserted bootstrap admin until first sign-in. `roles` is an enum array — a
+/// member's roles live in one row. Members are never hard-deleted; they go INACTIVE.
+model TeamMember {
+  id         String       @id @default(cuid())
+  authUserId String?      @unique
+  name       String
+  email      String       @unique
+  phone      String?
+  image      String?
+  roles      RoleName[]
+  status     MemberStatus @default(ACTIVE)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
-  @@index([userId])
-  @@map("account")
-}
-
-model Verification {
-  id         String   @id
-  identifier String
-  value      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@index([identifier])
-  @@map("verification")
-}
-
-model Quotation {
-  id String @id @default(cuid())
-
-  name        String
-  description String?
-
-  requirements String
-  content      String?
-
-  status String @default("pending")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  templateId String
-  template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("quotation")
-}
-
-model Template {
-  id String @id @default(cuid())
-
-  name        String
-  description String?
-
-  content String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  quotations Quotation[]
-
-  @@map("template")
+  @@map("team_member")
 }
