@@ -400,7 +400,10 @@ export const ModelName = {
   TeamMember: 'TeamMember',
   Business: 'Business',
   Contact: 'Contact',
-  ActivityLog: 'ActivityLog'
+  ActivityLog: 'ActivityLog',
+  Pipeline: 'Pipeline',
+  PipelinePhase: 'PipelinePhase',
+  DeactivationReason: 'DeactivationReason'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -416,7 +419,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "teamMember" | "business" | "contact" | "activityLog"
+    modelProps: "teamMember" | "business" | "contact" | "activityLog" | "pipeline" | "pipelinePhase" | "deactivationReason"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -716,6 +719,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    Pipeline: {
+      payload: Prisma.$PipelinePayload<ExtArgs>
+      fields: Prisma.PipelineFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PipelineFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PipelineFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePayload>
+        }
+        findFirst: {
+          args: Prisma.PipelineFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PipelineFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePayload>
+        }
+        findMany: {
+          args: Prisma.PipelineFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePayload>[]
+        }
+        create: {
+          args: Prisma.PipelineCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePayload>
+        }
+        createMany: {
+          args: Prisma.PipelineCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PipelineCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePayload>[]
+        }
+        delete: {
+          args: Prisma.PipelineDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePayload>
+        }
+        update: {
+          args: Prisma.PipelineUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePayload>
+        }
+        deleteMany: {
+          args: Prisma.PipelineDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PipelineUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PipelineUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePayload>[]
+        }
+        upsert: {
+          args: Prisma.PipelineUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePayload>
+        }
+        aggregate: {
+          args: Prisma.PipelineAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePipeline>
+        }
+        groupBy: {
+          args: Prisma.PipelineGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PipelineGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PipelineCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PipelineCountAggregateOutputType> | number
+        }
+      }
+    }
+    PipelinePhase: {
+      payload: Prisma.$PipelinePhasePayload<ExtArgs>
+      fields: Prisma.PipelinePhaseFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PipelinePhaseFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePhasePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PipelinePhaseFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePhasePayload>
+        }
+        findFirst: {
+          args: Prisma.PipelinePhaseFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePhasePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PipelinePhaseFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePhasePayload>
+        }
+        findMany: {
+          args: Prisma.PipelinePhaseFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePhasePayload>[]
+        }
+        create: {
+          args: Prisma.PipelinePhaseCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePhasePayload>
+        }
+        createMany: {
+          args: Prisma.PipelinePhaseCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PipelinePhaseCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePhasePayload>[]
+        }
+        delete: {
+          args: Prisma.PipelinePhaseDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePhasePayload>
+        }
+        update: {
+          args: Prisma.PipelinePhaseUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePhasePayload>
+        }
+        deleteMany: {
+          args: Prisma.PipelinePhaseDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PipelinePhaseUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PipelinePhaseUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePhasePayload>[]
+        }
+        upsert: {
+          args: Prisma.PipelinePhaseUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PipelinePhasePayload>
+        }
+        aggregate: {
+          args: Prisma.PipelinePhaseAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePipelinePhase>
+        }
+        groupBy: {
+          args: Prisma.PipelinePhaseGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PipelinePhaseGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PipelinePhaseCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PipelinePhaseCountAggregateOutputType> | number
+        }
+      }
+    }
+    DeactivationReason: {
+      payload: Prisma.$DeactivationReasonPayload<ExtArgs>
+      fields: Prisma.DeactivationReasonFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.DeactivationReasonFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeactivationReasonPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.DeactivationReasonFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeactivationReasonPayload>
+        }
+        findFirst: {
+          args: Prisma.DeactivationReasonFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeactivationReasonPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.DeactivationReasonFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeactivationReasonPayload>
+        }
+        findMany: {
+          args: Prisma.DeactivationReasonFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeactivationReasonPayload>[]
+        }
+        create: {
+          args: Prisma.DeactivationReasonCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeactivationReasonPayload>
+        }
+        createMany: {
+          args: Prisma.DeactivationReasonCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.DeactivationReasonCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeactivationReasonPayload>[]
+        }
+        delete: {
+          args: Prisma.DeactivationReasonDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeactivationReasonPayload>
+        }
+        update: {
+          args: Prisma.DeactivationReasonUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeactivationReasonPayload>
+        }
+        deleteMany: {
+          args: Prisma.DeactivationReasonDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.DeactivationReasonUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.DeactivationReasonUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeactivationReasonPayload>[]
+        }
+        upsert: {
+          args: Prisma.DeactivationReasonUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeactivationReasonPayload>
+        }
+        aggregate: {
+          args: Prisma.DeactivationReasonAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateDeactivationReason>
+        }
+        groupBy: {
+          args: Prisma.DeactivationReasonGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DeactivationReasonGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.DeactivationReasonCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DeactivationReasonCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -820,6 +1045,53 @@ export const ActivityLogScalarFieldEnum = {
 } as const
 
 export type ActivityLogScalarFieldEnum = (typeof ActivityLogScalarFieldEnum)[keyof typeof ActivityLogScalarFieldEnum]
+
+
+export const PipelineScalarFieldEnum = {
+  id: 'id',
+  code: 'code',
+  businessId: 'businessId',
+  name: 'name',
+  opportunityType: 'opportunityType',
+  leadSource: 'leadSource',
+  ownerId: 'ownerId',
+  notes: 'notes',
+  currentPhase: 'currentPhase',
+  status: 'status',
+  deactivationReasonId: 'deactivationReasonId',
+  deactivatedAt: 'deactivatedAt',
+  deactivatedById: 'deactivatedById',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PipelineScalarFieldEnum = (typeof PipelineScalarFieldEnum)[keyof typeof PipelineScalarFieldEnum]
+
+
+export const PipelinePhaseScalarFieldEnum = {
+  id: 'id',
+  pipelineId: 'pipelineId',
+  type: 'type',
+  status: 'status',
+  ownerId: 'ownerId',
+  startedAt: 'startedAt',
+  promotedAt: 'promotedAt',
+  promotedById: 'promotedById',
+  promoteNotes: 'promoteNotes',
+  notes: 'notes'
+} as const
+
+export type PipelinePhaseScalarFieldEnum = (typeof PipelinePhaseScalarFieldEnum)[keyof typeof PipelinePhaseScalarFieldEnum]
+
+
+export const DeactivationReasonScalarFieldEnum = {
+  id: 'id',
+  label: 'label',
+  enabled: 'enabled',
+  usageCount: 'usageCount'
+} as const
+
+export type DeactivationReasonScalarFieldEnum = (typeof DeactivationReasonScalarFieldEnum)[keyof typeof DeactivationReasonScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -961,6 +1233,62 @@ export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel,
 
 
 /**
+ * Reference to a field of type 'LeadSource'
+ */
+export type EnumLeadSourceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'LeadSource'>
+    
+
+
+/**
+ * Reference to a field of type 'LeadSource[]'
+ */
+export type ListEnumLeadSourceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'LeadSource[]'>
+    
+
+
+/**
+ * Reference to a field of type 'PhaseType'
+ */
+export type EnumPhaseTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PhaseType'>
+    
+
+
+/**
+ * Reference to a field of type 'PhaseType[]'
+ */
+export type ListEnumPhaseTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PhaseType[]'>
+    
+
+
+/**
+ * Reference to a field of type 'PipelineStatus'
+ */
+export type EnumPipelineStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PipelineStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'PipelineStatus[]'
+ */
+export type ListEnumPipelineStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PipelineStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'PhaseStatus'
+ */
+export type EnumPhaseStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PhaseStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'PhaseStatus[]'
+ */
+export type ListEnumPhaseStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PhaseStatus[]'>
+    
+
+
+/**
  * Reference to a field of type 'Int'
  */
 export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
@@ -971,6 +1299,20 @@ export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'In
  * Reference to a field of type 'Int[]'
  */
 export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+/**
+ * Reference to a field of type 'Float'
+ */
+export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
+    
+
+
+/**
+ * Reference to a field of type 'Float[]'
+ */
+export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
     
 
 /**
@@ -1128,6 +1470,9 @@ export type GlobalOmitConfig = {
   business?: Prisma.BusinessOmit
   contact?: Prisma.ContactOmit
   activityLog?: Prisma.ActivityLogOmit
+  pipeline?: Prisma.PipelineOmit
+  pipelinePhase?: Prisma.PipelinePhaseOmit
+  deactivationReason?: Prisma.DeactivationReasonOmit
 }
 
 /* Types for Logging */

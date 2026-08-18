@@ -1,13 +1,11 @@
-import {
-  FolderClosedIcon,
-  ListTodoIcon,
-  WalletIcon,
-  WorkflowIcon,
-} from "lucide-react";
+import Link from "next/link";
+import { FolderClosedIcon, ListTodoIcon, PlusIcon, WalletIcon, WorkflowIcon } from "lucide-react";
 
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
+import { StatusBadge } from "@/components/common/status-badge";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActivityList } from "@/features/businesses/components/activity-list";
@@ -19,6 +17,7 @@ import type {
   BusinessActivityItem,
   BusinessDetail as BusinessDetailData,
 } from "@/features/businesses/server/businesses.queries";
+import { PHASE_LABELS } from "@/features/pipelines/constants";
 
 const SOCIAL_LABELS: Record<string, string> = {
   linkedin: "LinkedIn",
@@ -51,9 +50,11 @@ function TabPlaceholder({
 export function BusinessDetail({
   business,
   activity,
+  canCreatePipeline,
 }: {
   business: BusinessDetailData;
   activity: BusinessActivityItem[];
+  canCreatePipeline: boolean;
 }) {
   const social = (business.social ?? {}) as Record<string, string>;
   const socialEntries = Object.entries(social).filter(([, v]) => Boolean(v));
@@ -166,11 +167,41 @@ export function BusinessDetail({
         </TabsContent>
 
         <TabsContent value="pipelines">
-          <TabPlaceholder
-            icon={WorkflowIcon}
-            title="No pipelines yet"
-            description="Pipelines for this business will appear here."
-          />
+          <div className="flex flex-col gap-4">
+            {canCreatePipeline ? (
+              <div className="flex justify-end">
+                <Button asChild size="sm">
+                  <Link href={`/pipelines/new?businessId=${business.id}`}>
+                    <PlusIcon className="size-4" />
+                    New Pipeline
+                  </Link>
+                </Button>
+              </div>
+            ) : null}
+            {business.pipelines.length === 0 ? (
+              <TabPlaceholder
+                icon={WorkflowIcon}
+                title="No pipelines yet"
+                description="Create the first pipeline for this business."
+              />
+            ) : (
+              <div className="flex flex-col divide-y rounded-lg border">
+                {business.pipelines.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between gap-2 p-3 text-sm">
+                    <div className="flex min-w-0 flex-col">
+                      <Link href={`/pipelines/${p.id}`} className="font-medium hover:underline">
+                        {p.code} · {p.name}
+                      </Link>
+                      <span className="text-xs text-muted-foreground">
+                        {PHASE_LABELS[p.currentPhase]}
+                      </span>
+                    </div>
+                    <StatusBadge kind={p.status} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="contacts">

@@ -68,7 +68,10 @@ export async function findPossibleDuplicates(
     where: { OR: or },
     take: 10,
     orderBy: { createdAt: "desc" },
-    include: { contacts: { where: { isPrimary: true }, take: 1 } },
+    include: {
+      contacts: { where: { isPrimary: true }, take: 1 },
+      pipelines: { select: { status: true } },
+    },
   });
 
   return businesses.map((b) => ({
@@ -78,8 +81,7 @@ export async function findPossibleDuplicates(
     email: b.email,
     primaryContactName: b.contacts[0]?.name ?? null,
     primaryContactEmail: b.contacts[0]?.email ?? null,
-    // Pipeline counts are wired in PHASE_5; render 0 until then.
-    pipelineCount: 0,
-    activePipelineCount: 0,
+    pipelineCount: b.pipelines.length,
+    activePipelineCount: b.pipelines.filter((p) => p.status === "ACTIVE").length,
   }));
 }

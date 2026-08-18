@@ -39,3 +39,47 @@ export const ContactRole = {
 } as const
 
 export type ContactRole = (typeof ContactRole)[keyof typeof ContactRole]
+
+
+export const PhaseType = {
+  CONTACT_INFO: 'CONTACT_INFO',
+  DISCOVERY: 'DISCOVERY',
+  BUSINESS_UNDERSTANDING: 'BUSINESS_UNDERSTANDING',
+  REQUIREMENT: 'REQUIREMENT',
+  QUOTATION: 'QUOTATION',
+  PROJECT_MANAGEMENT: 'PROJECT_MANAGEMENT'
+} as const
+
+export type PhaseType = (typeof PhaseType)[keyof typeof PhaseType]
+
+
+export const PhaseStatus = {
+  ACTIVE: 'ACTIVE',
+  PROMOTED: 'PROMOTED',
+  DEACTIVATED: 'DEACTIVATED'
+} as const
+
+export type PhaseStatus = (typeof PhaseStatus)[keyof typeof PhaseStatus]
+
+
+export const PipelineStatus = {
+  ACTIVE: 'ACTIVE',
+  DEACTIVATED: 'DEACTIVATED',
+  COMPLETED: 'COMPLETED'
+} as const
+
+export type PipelineStatus = (typeof PipelineStatus)[keyof typeof PipelineStatus]
+
+
+export const LeadSource = {
+  WEBSITE: 'WEBSITE',
+  INSTAGRAM: 'INSTAGRAM',
+  LINKEDIN: 'LINKEDIN',
+  REFERRAL: 'REFERRAL',
+  DIRECT: 'DIRECT',
+  COLD: 'COLD',
+  MANUAL_RESEARCH: 'MANUAL_RESEARCH',
+  OTHER: 'OTHER'
+} as const
+
+export type LeadSource = (typeof LeadSource)[keyof typeof LeadSource]

@@ -72,7 +72,7 @@ model Business {
   metrics     Json? // business research / metrics (PHASE_7 also writes here)
   notes       String?
   contacts    Contact[]
-  // pipelines Pipeline[]  // added in PHASE_5
+  pipelines   Pipeline[]
   createdById String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -117,4 +117,97 @@ model ActivityLog {
   @@index([businessId, createdAt])
   @@index([entityType, entityId])
   @@map("activity_log")
+}
+
+// ─── PHASE_5 — Pipelines & Phase State Machine ───
+
+enum PhaseType {
+  CONTACT_INFO
+  DISCOVERY
+  BUSINESS_UNDERSTANDING
+  REQUIREMENT
+  QUOTATION
+  PROJECT_MANAGEMENT
+}
+
+enum PhaseStatus {
+  ACTIVE
+  PROMOTED
+  DEACTIVATED
+}
+
+enum PipelineStatus {
+  ACTIVE
+  DEACTIVATED
+  COMPLETED
+}
+
+enum LeadSource {
+  WEBSITE
+  INSTAGRAM
+  LINKEDIN
+  REFERRAL
+  DIRECT
+  COLD
+  MANUAL_RESEARCH
+  OTHER
+}
+
+/// One opportunity for a Business. Moves forward-only through the fixed phase
+/// order via the state machine (promote / deactivate). Never hard-deleted.
+/// ownerId / deactivatedById / deactivationReasonId are denormalized ids (no FK).
+model Pipeline {
+  id                   String          @id @default(cuid())
+  code                 String          @unique // PL-00123
+  businessId           String
+  business             Business        @relation(fields: [businessId], references: [id])
+  name                 String
+  opportunityType      String?
+  leadSource           LeadSource      @default(OTHER)
+  ownerId              String?
+  notes                String?
+  currentPhase         PhaseType       @default(DISCOVERY)
+  status               PipelineStatus  @default(ACTIVE)
+  phases               PipelinePhase[]
+  deactivationReasonId String?
+  deactivatedAt        DateTime?
+  deactivatedById      String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  @@index([businessId])
+  @@index([status])
+  @@index([currentPhase])
+  @@map("pipeline")
+}
+
+/// A single phase instance on a pipeline. Exactly one row per (pipeline, type).
+/// Phase-specific payload tables attach in PHASE_7.
+model PipelinePhase {
+  id           String      @id @default(cuid())
+  pipelineId   String
+  pipeline     Pipeline    @relation(fields: [pipelineId], references: [id])
+  type         PhaseType
+  status       PhaseStatus @default(ACTIVE)
+  ownerId      String?
+  startedAt    DateTime    @default(now())
+  promotedAt   DateTime?
+  promotedById String?
+  promoteNotes String?
+  notes        String?
+
+  @@unique([pipelineId, type])
+  @@index([pipelineId])
+  @@map("pipeline_phase")
+}
+
+/// Seeded lookup of reasons a pipeline can be deactivated (WF-19). usageCount is
+/// maintained for the reasons report (WF-55).
+model DeactivationReason {
+  id         String  @id @default(cuid())
+  label      String  @unique
+  enabled    Boolean @default(true)
+  usageCount Int     @default(0)
+
+  @@map("deactivation_reason")
 }

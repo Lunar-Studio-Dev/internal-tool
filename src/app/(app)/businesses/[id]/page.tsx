@@ -38,7 +38,16 @@ export default async function BusinessDetailPage({
   const business = await getBusinessById(id);
   if (!business) notFound();
 
-  const activity = await getBusinessActivity(id);
+  const [activity, canCreatePipeline] = await Promise.all([
+    getBusinessActivity(id),
+    currentMemberCan("pipeline:write"),
+  ]);
 
-  return <BusinessDetail business={business} activity={activity} />;
+  return (
+    <BusinessDetail
+      business={business}
+      activity={activity}
+      canCreatePipeline={canCreatePipeline}
+    />
+  );
 }

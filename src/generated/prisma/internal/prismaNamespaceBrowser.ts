@@ -54,7 +54,10 @@ export const ModelName = {
   TeamMember: 'TeamMember',
   Business: 'Business',
   Contact: 'Contact',
-  ActivityLog: 'ActivityLog'
+  ActivityLog: 'ActivityLog',
+  Pipeline: 'Pipeline',
+  PipelinePhase: 'PipelinePhase',
+  DeactivationReason: 'DeactivationReason'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -138,6 +141,53 @@ export const ActivityLogScalarFieldEnum = {
 } as const
 
 export type ActivityLogScalarFieldEnum = (typeof ActivityLogScalarFieldEnum)[keyof typeof ActivityLogScalarFieldEnum]
+
+
+export const PipelineScalarFieldEnum = {
+  id: 'id',
+  code: 'code',
+  businessId: 'businessId',
+  name: 'name',
+  opportunityType: 'opportunityType',
+  leadSource: 'leadSource',
+  ownerId: 'ownerId',
+  notes: 'notes',
+  currentPhase: 'currentPhase',
+  status: 'status',
+  deactivationReasonId: 'deactivationReasonId',
+  deactivatedAt: 'deactivatedAt',
+  deactivatedById: 'deactivatedById',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PipelineScalarFieldEnum = (typeof PipelineScalarFieldEnum)[keyof typeof PipelineScalarFieldEnum]
+
+
+export const PipelinePhaseScalarFieldEnum = {
+  id: 'id',
+  pipelineId: 'pipelineId',
+  type: 'type',
+  status: 'status',
+  ownerId: 'ownerId',
+  startedAt: 'startedAt',
+  promotedAt: 'promotedAt',
+  promotedById: 'promotedById',
+  promoteNotes: 'promoteNotes',
+  notes: 'notes'
+} as const
+
+export type PipelinePhaseScalarFieldEnum = (typeof PipelinePhaseScalarFieldEnum)[keyof typeof PipelinePhaseScalarFieldEnum]
+
+
+export const DeactivationReasonScalarFieldEnum = {
+  id: 'id',
+  label: 'label',
+  enabled: 'enabled',
+  usageCount: 'usageCount'
+} as const
+
+export type DeactivationReasonScalarFieldEnum = (typeof DeactivationReasonScalarFieldEnum)[keyof typeof DeactivationReasonScalarFieldEnum]
 
 
 export const SortOrder = {

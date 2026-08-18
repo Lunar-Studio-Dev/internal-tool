@@ -68,3 +68,22 @@ export type Contact = Prisma.ContactModel
  * actorId/businessId/pipelineId are denormalized (no FK) for fast timelines.
  */
 export type ActivityLog = Prisma.ActivityLogModel
+/**
+ * Model Pipeline
+ * One opportunity for a Business. Moves forward-only through the fixed phase
+ * order via the state machine (promote / deactivate). Never hard-deleted.
+ * ownerId / deactivatedById / deactivationReasonId are denormalized ids (no FK).
+ */
+export type Pipeline = Prisma.PipelineModel
+/**
+ * Model PipelinePhase
+ * A single phase instance on a pipeline. Exactly one row per (pipeline, type).
+ * Phase-specific payload tables attach in PHASE_7.
+ */
+export type PipelinePhase = Prisma.PipelinePhaseModel
+/**
+ * Model DeactivationReason
+ * Seeded lookup of reasons a pipeline can be deactivated (WF-19). usageCount is
+ * maintained for the reasons report (WF-55).
+ */
+export type DeactivationReason = Prisma.DeactivationReasonModel

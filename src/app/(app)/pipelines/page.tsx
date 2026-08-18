@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { ShieldIcon, WorkflowIcon } from "lucide-react";
+import { ShieldIcon } from "lucide-react";
 
-import { ComingSoon } from "@/components/common/coming-soon";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
+import { PipelineTable, type PipelineRow } from "@/features/pipelines/components/pipeline-table";
+import { listPipelines } from "@/features/pipelines/server/pipelines.queries";
 import { currentMemberCan } from "@/lib/auth/member";
 
 export const dynamic = "force-dynamic";
@@ -23,24 +24,26 @@ export default async function PipelinesPage() {
     );
   }
 
+  const pipelines = await listPipelines();
+  const rows: PipelineRow[] = pipelines.map((p) => ({
+    id: p.id,
+    code: p.code,
+    businessId: p.businessId,
+    businessName: p.business.name,
+    name: p.name,
+    currentPhase: p.currentPhase,
+    status: p.status,
+    ownerName: p.ownerName ?? "",
+  }));
+
   return (
     <>
       <PageHeader
         title="Pipelines"
-        description="Opportunities moving from Discovery through to Project."
+        description="Track opportunities as they move from Discovery to Project."
         breadcrumbs={[{ label: "Pipelines" }]}
       />
-      <ComingSoon
-        icon={WorkflowIcon}
-        title="Pipelines are on the way"
-        description="Track every opportunity as it moves through Discovery → Business → Requirement → Quotation → Project."
-        features={[
-          "A visual stepper that shows exactly where each deal stands",
-          "Promote, deactivate, and reactivate stages with a reason trail",
-          "Quotation versioning and full negotiation history",
-          "Follow-up scheduling so no opportunity goes cold",
-        ]}
-      />
+      <PipelineTable pipelines={rows} />
     </>
   );
 }

@@ -31,9 +31,8 @@ export default async function BusinessesPage() {
     website: b.website ?? "",
     industry: b.industry ?? "",
     primaryContact: b.contacts[0]?.name ?? "",
-    // Pipeline counts are wired in PHASE_5.
-    pipelineCount: 0,
-    activePipelineCount: 0,
+    pipelineCount: b.pipelines.length,
+    activePipelineCount: b.pipelines.filter((p) => p.status === "ACTIVE").length,
   }));
 
   return (

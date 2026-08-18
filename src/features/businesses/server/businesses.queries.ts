@@ -13,6 +13,7 @@ export async function listBusinesses() {
     orderBy: { createdAt: "desc" },
     include: {
       contacts: { where: { isPrimary: true }, take: 1 },
+      pipelines: { select: { status: true } },
       _count: { select: { contacts: true } },
     },
   });
@@ -26,6 +27,10 @@ export async function getBusinessById(id: string) {
     where: { id },
     include: {
       contacts: { orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] },
+      pipelines: {
+        select: { id: true, code: true, name: true, currentPhase: true, status: true },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 }
