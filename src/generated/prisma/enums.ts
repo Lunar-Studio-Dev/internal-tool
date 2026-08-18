@@ -29,3 +29,13 @@ export const MemberStatus = {
 } as const
 
 export type MemberStatus = (typeof MemberStatus)[keyof typeof MemberStatus]
+
+
+export const ContactRole = {
+  OWNER: 'OWNER',
+  MANAGER: 'MANAGER',
+  CTO: 'CTO',
+  OTHER: 'OTHER'
+} as const
+
+export type ContactRole = (typeof ContactRole)[keyof typeof ContactRole]

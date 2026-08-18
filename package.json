@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "pnpm dlx prisma generate && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "inngest:dev": "pnpm dlx inngest-cli@latest dev -u http://localhost:3000/api/inngest"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.69",

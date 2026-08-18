@@ -9,4 +9,7 @@
  * 🟢 You can import this file directly.
  */
 export type * from './models/TeamMember'
+export type * from './models/Business'
+export type * from './models/Contact'
+export type * from './models/ActivityLog'
 export type * from './commonInputTypes'

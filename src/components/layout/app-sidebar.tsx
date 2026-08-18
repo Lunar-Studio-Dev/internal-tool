@@ -38,7 +38,7 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-transparent border text-primary-foreground">
                   <Image src={"/logo.png"} width={16} height={16} alt="Lunar Studio Logo" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">

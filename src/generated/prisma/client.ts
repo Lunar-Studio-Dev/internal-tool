@@ -50,3 +50,21 @@ export { Prisma }
  * member's roles live in one row. Members are never hard-deleted; they go INACTIVE.
  */
 export type TeamMember = Prisma.TeamMemberModel
+/**
+ * Model Business
+ * Permanent client identity. Never hard-deleted (universal rule #1). Editing
+ * business info must not mutate historical pipeline snapshots (added PHASE_5).
+ */
+export type Business = Prisma.BusinessModel
+/**
+ * Model Contact
+ * A person at a Business. Exactly one Contact per business is Primary; the
+ * invariant is enforced in a transaction (unset previous primary on change).
+ */
+export type Contact = Prisma.ContactModel
+/**
+ * Model ActivityLog
+ * Cross-cutting audit trail. Written by every mutating action from PHASE_4 on.
+ * actorId/businessId/pipelineId are denormalized (no FK) for fast timelines.
+ */
+export type ActivityLog = Prisma.ActivityLogModel
