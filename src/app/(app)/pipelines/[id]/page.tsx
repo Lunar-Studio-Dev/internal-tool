@@ -9,6 +9,12 @@ import {
   getPipelineById,
   listDeactivationReasons,
 } from "@/features/pipelines/server/pipelines.queries";
+import { listFollowUpsForPipeline } from "@/features/followups/server/followups.queries";
+import {
+  listResourceOptions,
+  listResourcesForPipeline,
+} from "@/features/resources/server/resources.queries";
+import { listTaskOptions, listTasksForPipeline } from "@/features/tasks/server/tasks.queries";
 import { currentMemberCan } from "@/lib/auth/member";
 
 export const dynamic = "force-dynamic";
@@ -39,11 +45,20 @@ export default async function PipelineDetailPage({
   const pipeline = await getPipelineById(id);
   if (!pipeline) notFound();
 
-  const [activity, reasons, canWrite] = await Promise.all([
-    getPipelineActivity(id),
-    listDeactivationReasons(),
-    currentMemberCan("pipeline:write"),
-  ]);
+  const [activity, reasons, canWrite, canTaskWrite, canResourceWrite, tasks, resources, followUps] =
+    await Promise.all([
+      getPipelineActivity(id),
+      listDeactivationReasons(),
+      currentMemberCan("pipeline:write"),
+      currentMemberCan("task:write"),
+      currentMemberCan("resource:write"),
+      listTasksForPipeline(id),
+      listResourcesForPipeline(id),
+      listFollowUpsForPipeline(id),
+    ]);
+
+  const taskOptions = canTaskWrite ? await listTaskOptions() : null;
+  const resourceOptions = canResourceWrite ? await listResourceOptions() : null;
 
   return (
     <PipelineDetail
@@ -51,6 +66,26 @@ export default async function PipelineDetailPage({
       activity={activity}
       reasons={reasons.map((r) => ({ id: r.id, label: r.label }))}
       canWrite={canWrite}
+      canTaskWrite={canTaskWrite}
+      canResourceWrite={canResourceWrite}
+      taskOptions={taskOptions}
+      resourceOptions={resourceOptions}
+      members={taskOptions?.members ?? []}
+      phaseTasks={tasks.map((t) => ({
+        id: t.id,
+        title: t.title,
+        status: t.status,
+        dueAt: t.dueAt,
+      }))}
+      phaseResources={resources.map((r) => ({ id: r.id, name: r.name, type: r.type }))}
+      phaseFollowUps={followUps.map((f) => ({
+        id: f.id,
+        reason: f.reason,
+        dueAt: f.dueAt.toISOString(),
+        completedAt: f.completedAt ? f.completedAt.toISOString() : null,
+        assigneeName: f.assigneeName,
+        notes: f.notes,
+      }))}
     />
   );
 }

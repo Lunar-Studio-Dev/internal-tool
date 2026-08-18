@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { ListTodoIcon, ShieldIcon } from "lucide-react";
+import { ShieldIcon } from "lucide-react";
 
-import { ComingSoon } from "@/components/common/coming-soon";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
+import { TaskDashboard, type TaskRow } from "@/features/tasks/components/task-dashboard";
+import { listTaskOptions, listTasks } from "@/features/tasks/server/tasks.queries";
 import { currentMemberCan } from "@/lib/auth/member";
 
 export const dynamic = "force-dynamic";
@@ -23,24 +24,29 @@ export default async function TodosPage() {
     );
   }
 
+  const [tasks, options] = await Promise.all([listTasks(), listTaskOptions()]);
+  const rows: TaskRow[] = tasks.map((t) => ({
+    id: t.id,
+    title: t.title,
+    status: t.status,
+    priority: t.priority,
+    dueAt: t.dueAt ? t.dueAt.toISOString() : null,
+    assigneeId: t.assigneeId,
+    assigneeName: t.assigneeName,
+    businessId: t.businessId,
+    businessName: t.businessName,
+    pipelineId: t.pipelineId,
+    pipelineCode: t.pipelineCode,
+  }));
+
   return (
     <>
       <PageHeader
-        title="To-Dos"
+        title="My To-Dos"
         description="Tasks across every client, pipeline, and project."
         breadcrumbs={[{ label: "To-Dos" }]}
       />
-      <ComingSoon
-        icon={ListTodoIcon}
-        title="To-Dos are on the way"
-        description="Assign, track, and complete work across every client, pipeline, and project — without losing the thread."
-        features={[
-          "Assign tasks to team members with due dates",
-          "Overdue alerts and priority filters",
-          "Link tasks to businesses, pipelines, and projects",
-          "Personal and team-wide task views",
-        ]}
-      />
+      <TaskDashboard tasks={rows} options={options} />
     </>
   );
 }

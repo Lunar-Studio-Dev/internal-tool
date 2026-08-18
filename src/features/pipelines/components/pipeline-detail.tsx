@@ -1,24 +1,28 @@
 import { format } from "date-fns";
-import { CreditCardIcon, FileTextIcon, FolderClosedIcon, ListTodoIcon } from "lucide-react";
+import { CreditCardIcon, FileTextIcon } from "lucide-react";
 
-import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
 import { PipelineStepper } from "@/components/common/pipeline-stepper";
 import { StatusBadge } from "@/components/common/status-badge";
+import { EmptyState } from "@/components/common/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { FollowUpRow } from "@/features/followups/components/followup-list";
 import { PipelineActions } from "@/features/pipelines/components/pipeline-actions";
 import { PipelineActivityList } from "@/features/pipelines/components/pipeline-activity-list";
 import { PhaseViewShell } from "@/features/pipelines/components/phase-view-shell";
 import {
-  LEAD_SOURCE_LABELS,
-  PHASE_LABELS,
-  PHASE_ORDER,
-} from "@/features/pipelines/constants";
+  PhaseWork,
+  type PhaseWorkResource,
+  type PhaseWorkTask,
+} from "@/features/pipelines/components/phase-work";
+import { LEAD_SOURCE_LABELS, PHASE_LABELS, PHASE_ORDER } from "@/features/pipelines/constants";
 import type {
   PipelineActivityItem,
   PipelineDetail as PipelineDetailData,
 } from "@/features/pipelines/server/pipelines.queries";
+import type { ResourceOptions } from "@/features/resources/server/resources.queries";
+import type { TaskOptions } from "@/features/tasks/server/tasks.queries";
 import { PhaseType } from "@/generated/prisma/enums";
 
 export function PipelineDetail({
@@ -26,11 +30,27 @@ export function PipelineDetail({
   activity,
   reasons,
   canWrite,
+  phaseTasks,
+  phaseResources,
+  phaseFollowUps,
+  members,
+  taskOptions,
+  resourceOptions,
+  canTaskWrite,
+  canResourceWrite,
 }: {
   pipeline: PipelineDetailData;
   activity: PipelineActivityItem[];
   reasons: { id: string; label: string }[];
   canWrite: boolean;
+  phaseTasks: PhaseWorkTask[];
+  phaseResources: PhaseWorkResource[];
+  phaseFollowUps: FollowUpRow[];
+  members: { id: string; name: string }[];
+  taskOptions: TaskOptions | null;
+  resourceOptions: ResourceOptions | null;
+  canTaskWrite: boolean;
+  canResourceWrite: boolean;
 }) {
   const deactivated = pipeline.status === "DEACTIVATED";
   const phaseByType = new Map(pipeline.phases.map((p) => [p.type, p]));
@@ -62,8 +82,6 @@ export function PipelineDetail({
           <TabsList className="flex-wrap">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="phases">Phases</TabsTrigger>
-            <TabsTrigger value="tasks">Tasks</TabsTrigger>
-            <TabsTrigger value="resources">Resources</TabsTrigger>
             <TabsTrigger value="quotation">Quotation</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
@@ -87,9 +105,7 @@ export function PipelineDetail({
                   <div className="flex flex-col gap-0.5">
                     <span className="text-xs text-muted-foreground">On</span>
                     <span>
-                      {pipeline.deactivatedAt
-                        ? format(pipeline.deactivatedAt, "d MMM yyyy")
-                        : "—"}
+                      {pipeline.deactivatedAt ? format(pipeline.deactivatedAt, "d MMM yyyy") : "—"}
                     </span>
                   </div>
                 </CardContent>
@@ -102,6 +118,21 @@ export function PipelineDetail({
               startedAt={current?.startedAt ?? null}
               ownerName={pipeline.ownerName}
               notes={current?.notes ?? pipeline.notes}
+              work={
+                <PhaseWork
+                  businessId={pipeline.businessId}
+                  pipelineId={pipeline.id}
+                  phaseType={pipeline.currentPhase}
+                  tasks={phaseTasks}
+                  resources={phaseResources}
+                  followUps={phaseFollowUps}
+                  members={members}
+                  taskOptions={taskOptions}
+                  resourceOptions={resourceOptions}
+                  canTaskWrite={canTaskWrite}
+                  canResourceWrite={canResourceWrite}
+                />
+              }
               actions={
                 <PipelineActions
                   pipelineId={pipeline.id}
@@ -137,17 +168,19 @@ export function PipelineDetail({
             </div>
           </TabsContent>
 
-          <TabsContent value="tasks">
-            <EmptyState icon={ListTodoIcon} title="No tasks yet" description="Pipeline tasks arrive in a later phase." />
-          </TabsContent>
-          <TabsContent value="resources">
-            <EmptyState icon={FolderClosedIcon} title="No resources yet" description="Pipeline resources arrive in a later phase." />
-          </TabsContent>
           <TabsContent value="quotation">
-            <EmptyState icon={FileTextIcon} title="No quotation yet" description="Quotations arrive in a later phase." />
+            <EmptyState
+              icon={FileTextIcon}
+              title="No quotation yet"
+              description="Quotations arrive in a later phase."
+            />
           </TabsContent>
           <TabsContent value="payments">
-            <EmptyState icon={CreditCardIcon} title="No payments yet" description="Payments arrive in a later phase." />
+            <EmptyState
+              icon={CreditCardIcon}
+              title="No payments yet"
+              description="Payments arrive in a later phase."
+            />
           </TabsContent>
 
           <TabsContent value="activity">

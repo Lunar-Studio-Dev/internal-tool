@@ -211,3 +211,96 @@ model DeactivationReason {
 
   @@map("deactivation_reason")
 }
+
+// ─── PHASE_6 — Tasks, Follow-ups & Resources ───
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ResourceType {
+  PDF
+  DOCX
+  IMAGE
+  TEXT
+  QUOTATION
+  REQUIREMENT
+  RESEARCH
+  MEETING_NOTES
+  OTHER
+}
+
+/// Independent work item, optionally linked to a Business/Pipeline/Phase.
+/// "Overdue" is derived in reads (status not COMPLETED/CANCELLED and dueAt < now),
+/// never stored. assignee/business/pipeline ids are denormalized (no FK).
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  assigneeId  String?
+  createdById String?
+  dueAt       DateTime?
+  priority    Priority   @default(MEDIUM)
+  status      TaskStatus @default(TODO)
+  businessId  String?
+  pipelineId  String?
+  phaseType   PhaseType?
+  notes       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([assigneeId, dueAt])
+  @@index([status])
+  @@index([pipelineId])
+  @@map("task")
+}
+
+/// Scheduled future action (used heavily for unresponsive / revisit-later cases).
+/// History is preserved — follow-ups are never bulk-deleted.
+model FollowUp {
+  id          String     @id @default(cuid())
+  businessId  String?
+  pipelineId  String?
+  phaseType   PhaseType?
+  reason      String
+  dueAt       DateTime
+  assigneeId  String?
+  notes       String?
+  completedAt DateTime?
+  createdById String?
+  createdAt   DateTime   @default(now())
+
+  @@index([assigneeId, dueAt])
+  @@index([pipelineId])
+  @@map("follow_up")
+}
+
+/// File/document metadata; the object itself lives in Cloudflare R2 (objectKey).
+/// Scoped to a Business, or Business + Pipeline + Phase.
+model Resource {
+  id          String       @id @default(cuid())
+  name        String
+  type        ResourceType @default(OTHER)
+  objectKey   String
+  sizeBytes   Int?
+  contentType String?
+  businessId  String?
+  pipelineId  String?
+  phaseType   PhaseType?
+  description String?
+  createdById String?
+  createdAt   DateTime     @default(now())
+
+  @@index([businessId])
+  @@index([pipelineId])
+  @@index([type])
+  @@map("resource")
+}

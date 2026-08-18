@@ -57,7 +57,10 @@ export const ModelName = {
   ActivityLog: 'ActivityLog',
   Pipeline: 'Pipeline',
   PipelinePhase: 'PipelinePhase',
-  DeactivationReason: 'DeactivationReason'
+  DeactivationReason: 'DeactivationReason',
+  Task: 'Task',
+  FollowUp: 'FollowUp',
+  Resource: 'Resource'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -188,6 +191,60 @@ export const DeactivationReasonScalarFieldEnum = {
 } as const
 
 export type DeactivationReasonScalarFieldEnum = (typeof DeactivationReasonScalarFieldEnum)[keyof typeof DeactivationReasonScalarFieldEnum]
+
+
+export const TaskScalarFieldEnum = {
+  id: 'id',
+  title: 'title',
+  assigneeId: 'assigneeId',
+  createdById: 'createdById',
+  dueAt: 'dueAt',
+  priority: 'priority',
+  status: 'status',
+  businessId: 'businessId',
+  pipelineId: 'pipelineId',
+  phaseType: 'phaseType',
+  notes: 'notes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type TaskScalarFieldEnum = (typeof TaskScalarFieldEnum)[keyof typeof TaskScalarFieldEnum]
+
+
+export const FollowUpScalarFieldEnum = {
+  id: 'id',
+  businessId: 'businessId',
+  pipelineId: 'pipelineId',
+  phaseType: 'phaseType',
+  reason: 'reason',
+  dueAt: 'dueAt',
+  assigneeId: 'assigneeId',
+  notes: 'notes',
+  completedAt: 'completedAt',
+  createdById: 'createdById',
+  createdAt: 'createdAt'
+} as const
+
+export type FollowUpScalarFieldEnum = (typeof FollowUpScalarFieldEnum)[keyof typeof FollowUpScalarFieldEnum]
+
+
+export const ResourceScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  type: 'type',
+  objectKey: 'objectKey',
+  sizeBytes: 'sizeBytes',
+  contentType: 'contentType',
+  businessId: 'businessId',
+  pipelineId: 'pipelineId',
+  phaseType: 'phaseType',
+  description: 'description',
+  createdById: 'createdById',
+  createdAt: 'createdAt'
+} as const
+
+export type ResourceScalarFieldEnum = (typeof ResourceScalarFieldEnum)[keyof typeof ResourceScalarFieldEnum]
 
 
 export const SortOrder = {

@@ -18,6 +18,7 @@ export function PhaseViewShell({
   startedAt,
   ownerName,
   notes,
+  work,
   actions,
 }: {
   phaseLabel: string;
@@ -25,6 +26,8 @@ export function PhaseViewShell({
   startedAt: Date | null;
   ownerName: string | null;
   notes: string | null;
+  /** Phase tasks / resources / follow-ups panel. Falls back to empty slots. */
+  work?: ReactNode;
   actions?: ReactNode;
 }) {
   return (
@@ -55,24 +58,22 @@ export function PhaseViewShell({
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-lg border p-4">
-            <p className="mb-2 text-sm font-medium">Phase tasks</p>
-            <EmptyState
-              icon={ListTodoIcon}
-              title="No tasks yet"
-              description="Phase tasks arrive in a later phase."
-            />
+        {work ?? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-lg border p-4">
+              <p className="mb-2 text-sm font-medium">Phase tasks</p>
+              <EmptyState icon={ListTodoIcon} title="No tasks yet" description="Phase tasks appear here." />
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="mb-2 text-sm font-medium">Phase resources</p>
+              <EmptyState
+                icon={FolderClosedIcon}
+                title="No resources yet"
+                description="Phase resources appear here."
+              />
+            </div>
           </div>
-          <div className="rounded-lg border p-4">
-            <p className="mb-2 text-sm font-medium">Phase resources</p>
-            <EmptyState
-              icon={FolderClosedIcon}
-              title="No resources yet"
-              description="Phase resources arrive in a later phase."
-            />
-          </div>
-        </div>
+        )}
 
         {actions ? <div className="border-t pt-4">{actions}</div> : null}
       </CardContent>

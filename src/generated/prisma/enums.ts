@@ -83,3 +83,37 @@ export const LeadSource = {
 } as const
 
 export type LeadSource = (typeof LeadSource)[keyof typeof LeadSource]
+
+
+export const Priority = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH'
+} as const
+
+export type Priority = (typeof Priority)[keyof typeof Priority]
+
+
+export const TaskStatus = {
+  TODO: 'TODO',
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED'
+} as const
+
+export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus]
+
+
+export const ResourceType = {
+  PDF: 'PDF',
+  DOCX: 'DOCX',
+  IMAGE: 'IMAGE',
+  TEXT: 'TEXT',
+  QUOTATION: 'QUOTATION',
+  REQUIREMENT: 'REQUIREMENT',
+  RESEARCH: 'RESEARCH',
+  MEETING_NOTES: 'MEETING_NOTES',
+  OTHER: 'OTHER'
+} as const
+
+export type ResourceType = (typeof ResourceType)[keyof typeof ResourceType]

@@ -1,9 +1,18 @@
 import type { Metadata } from "next";
-import { FolderClosedIcon, ShieldIcon } from "lucide-react";
+import { ShieldIcon, UploadIcon } from "lucide-react";
 
-import { ComingSoon } from "@/components/common/coming-soon";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
+import { Button } from "@/components/ui/button";
+import {
+  ResourceLibraryTable,
+  type ResourceRow,
+} from "@/features/resources/components/resource-library-table";
+import { UploadDialog } from "@/features/resources/components/upload-dialog";
+import {
+  listResourceOptions,
+  listResources,
+} from "@/features/resources/server/resources.queries";
 import { currentMemberCan } from "@/lib/auth/member";
 
 export const dynamic = "force-dynamic";
@@ -23,24 +32,45 @@ export default async function ResourcesPage() {
     );
   }
 
+  const [resources, options, canWrite] = await Promise.all([
+    listResources(),
+    listResourceOptions(),
+    currentMemberCan("resource:write"),
+  ]);
+
+  const rows: ResourceRow[] = resources.map((r) => ({
+    id: r.id,
+    name: r.name,
+    type: r.type,
+    sizeBytes: r.sizeBytes,
+    businessId: r.businessId,
+    businessName: r.businessName,
+    pipelineId: r.pipelineId,
+    pipelineCode: r.pipelineCode,
+    phaseType: r.phaseType,
+  }));
+
   return (
     <>
       <PageHeader
         title="Resources"
-        description="A shared library of documents, links, and assets."
+        description="A shared library of documents and files."
         breadcrumbs={[{ label: "Resources" }]}
+        action={
+          canWrite ? (
+            <UploadDialog
+              options={options}
+              trigger={
+                <Button>
+                  <UploadIcon className="size-4" />
+                  Upload
+                </Button>
+              }
+            />
+          ) : undefined
+        }
       />
-      <ComingSoon
-        icon={FolderClosedIcon}
-        title="Resources are on the way"
-        description="A shared library of documents, links, and assets your team can attach anywhere — no more hunting through inboxes and drives."
-        features={[
-          "Upload files to secure cloud storage",
-          "Organize everything into a categorized library",
-          "Attach resources to pipelines, projects, and tasks",
-          "Share links and keep versions tidy",
-        ]}
-      />
+      <ResourceLibraryTable resources={rows} canWrite={canWrite} />
     </>
   );
 }

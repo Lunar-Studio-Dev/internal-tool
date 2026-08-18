@@ -87,3 +87,22 @@ export type PipelinePhase = Prisma.PipelinePhaseModel
  * maintained for the reasons report (WF-55).
  */
 export type DeactivationReason = Prisma.DeactivationReasonModel
+/**
+ * Model Task
+ * Independent work item, optionally linked to a Business/Pipeline/Phase.
+ * "Overdue" is derived in reads (status not COMPLETED/CANCELLED and dueAt < now),
+ * never stored. assignee/business/pipeline ids are denormalized (no FK).
+ */
+export type Task = Prisma.TaskModel
+/**
+ * Model FollowUp
+ * Scheduled future action (used heavily for unresponsive / revisit-later cases).
+ * History is preserved — follow-ups are never bulk-deleted.
+ */
+export type FollowUp = Prisma.FollowUpModel
+/**
+ * Model Resource
+ * File/document metadata; the object itself lives in Cloudflare R2 (objectKey).
+ * Scoped to a Business, or Business + Pipeline + Phase.
+ */
+export type Resource = Prisma.ResourceModel
