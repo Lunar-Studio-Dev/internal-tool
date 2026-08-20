@@ -12,7 +12,11 @@ import { QueryGate } from "@/components/common/query-gate";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  SectionTabs,
+  SectionTabsList,
+  SectionTabsTrigger,
+} from "@/components/common/section-tabs";
 import { taskQueries, useCompleteTask } from "@/features/tasks/api";
 import { TaskFormDialog } from "@/features/tasks/components/task-form-dialog";
 import {
@@ -160,17 +164,17 @@ export function TaskDashboard() {
       error={tasksQuery.error ?? optionsQuery.error}
     >
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-2">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
-          <TabsList className="flex-wrap">
-            <TabsTrigger value="MY">My Tasks</TabsTrigger>
-            <TabsTrigger value="ALL">All Tasks</TabsTrigger>
-            <TabsTrigger value="OVERDUE">Overdue</TabsTrigger>
-            <TabsTrigger value="TODAY">Today</TabsTrigger>
-            <TabsTrigger value="UPCOMING">Upcoming</TabsTrigger>
-            <TabsTrigger value="COMPLETED">Completed</TabsTrigger>
-          </TabsList>
-        </Tabs>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <SectionTabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="w-full sm:w-auto">
+          <SectionTabsList>
+            <SectionTabsTrigger value="MY">My Tasks</SectionTabsTrigger>
+            <SectionTabsTrigger value="ALL">All Tasks</SectionTabsTrigger>
+            <SectionTabsTrigger value="OVERDUE">Overdue</SectionTabsTrigger>
+            <SectionTabsTrigger value="TODAY">Today</SectionTabsTrigger>
+            <SectionTabsTrigger value="UPCOMING">Upcoming</SectionTabsTrigger>
+            <SectionTabsTrigger value="COMPLETED">Completed</SectionTabsTrigger>
+          </SectionTabsList>
+        </SectionTabs>
         <TaskFormDialog
           mode="create"
           options={optionsQuery.data}

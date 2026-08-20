@@ -17,7 +17,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  SectionTabs,
+  SectionTabsList,
+  SectionTabsTrigger,
+} from "@/components/common/section-tabs";
+import { TabsContent } from "@/components/ui/tabs";
 import { teamQueries } from "@/features/team/api";
 import { MemberDetailActions } from "@/features/team/components/member-detail-actions";
 import { ROLE_LABELS } from "@/features/team/constants";
@@ -109,13 +114,13 @@ export function MemberDetailView({ id }: { id: string }) {
             </Card>
           </div>
 
-          <Tabs defaultValue="tasks">
-            <TabsList>
-              <TabsTrigger value="tasks">Tasks</TabsTrigger>
-              <TabsTrigger value="pipelines">Pipelines</TabsTrigger>
-              <TabsTrigger value="activity">Activity</TabsTrigger>
-              <TabsTrigger value="roles">Roles</TabsTrigger>
-            </TabsList>
+          <SectionTabs defaultValue="tasks">
+            <SectionTabsList>
+              <SectionTabsTrigger value="tasks">Tasks</SectionTabsTrigger>
+              <SectionTabsTrigger value="pipelines">Pipelines</SectionTabsTrigger>
+              <SectionTabsTrigger value="activity">Activity</SectionTabsTrigger>
+              <SectionTabsTrigger value="roles">Roles</SectionTabsTrigger>
+            </SectionTabsList>
             <TabsContent value="tasks">
               {!workload?.tasks.length ? (
                 <EmptyState title="No tasks yet" description="Assigned tasks appear here." />
@@ -176,7 +181,7 @@ export function MemberDetailView({ id }: { id: string }) {
                 ))}
               </div>
             </TabsContent>
-          </Tabs>
+          </SectionTabs>
         </>
       ) : null}
     </QueryGate>

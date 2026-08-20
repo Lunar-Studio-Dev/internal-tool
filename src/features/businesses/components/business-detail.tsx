@@ -13,7 +13,12 @@ import { StatusBadge } from "@/components/common/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  SectionTabs,
+  SectionTabsList,
+  SectionTabsTrigger,
+} from "@/components/common/section-tabs";
+import { TabsContent } from "@/components/ui/tabs";
 import { businessQueries } from "@/features/businesses/api";
 import { BusinessDetailActions } from "@/features/businesses/components/business-detail-actions";
 import type { BusinessFormInitial } from "@/features/businesses/components/business-form";
@@ -109,16 +114,16 @@ export function BusinessDetail({ id }: { id: string }) {
             action={<BusinessDetailActions initial={editInitial} />}
           />
 
-          <Tabs defaultValue="overview" className="gap-4">
-            <TabsList className="flex-wrap">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="pipelines">Pipelines</TabsTrigger>
-              <TabsTrigger value="contacts">Contacts</TabsTrigger>
-              <TabsTrigger value="resources">Resources</TabsTrigger>
-              <TabsTrigger value="tasks">Tasks</TabsTrigger>
-              <TabsTrigger value="financials">Financials</TabsTrigger>
-              <TabsTrigger value="activity">Activity</TabsTrigger>
-            </TabsList>
+          <SectionTabs defaultValue="overview" className="gap-4">
+            <SectionTabsList>
+              <SectionTabsTrigger value="overview">Overview</SectionTabsTrigger>
+              <SectionTabsTrigger value="pipelines">Pipelines</SectionTabsTrigger>
+              <SectionTabsTrigger value="contacts">Contacts</SectionTabsTrigger>
+              <SectionTabsTrigger value="resources">Resources</SectionTabsTrigger>
+              <SectionTabsTrigger value="tasks">Tasks</SectionTabsTrigger>
+              <SectionTabsTrigger value="financials">Financials</SectionTabsTrigger>
+              <SectionTabsTrigger value="activity">Activity</SectionTabsTrigger>
+            </SectionTabsList>
 
             <TabsContent value="overview">
               <div className="grid gap-4 md:grid-cols-2">
@@ -295,7 +300,7 @@ export function BusinessDetail({ id }: { id: string }) {
             <TabsContent value="activity">
               <ActivityList items={activityQuery.data ?? []} />
             </TabsContent>
-          </Tabs>
+          </SectionTabs>
         </>
       ) : null}
     </QueryGate>

@@ -11,7 +11,12 @@ import { PipelineStepper } from "@/components/common/pipeline-stepper";
 import { QueryGate } from "@/components/common/query-gate";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  SectionTabs,
+  SectionTabsList,
+  SectionTabsTrigger,
+} from "@/components/common/section-tabs";
+import { TabsContent } from "@/components/ui/tabs";
 import { pipelineQueries } from "@/features/pipelines/api";
 import { PipelineActions } from "@/features/pipelines/components/pipeline-actions";
 import { PhaseViewShell } from "@/features/pipelines/components/phase-view-shell";
@@ -72,14 +77,14 @@ export function PipelineDetail({ id }: { id: string }) {
               deactivated={deactivated}
             />
 
-            <Tabs defaultValue="overview" className="gap-4">
-              <TabsList className="flex-wrap">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="phases">Phases</TabsTrigger>
-                <TabsTrigger value="quotation">Quotation</TabsTrigger>
-                <TabsTrigger value="payments">Payments</TabsTrigger>
-                <TabsTrigger value="activity">Activity</TabsTrigger>
-              </TabsList>
+            <SectionTabs defaultValue="overview" className="gap-4">
+              <SectionTabsList>
+                <SectionTabsTrigger value="overview">Overview</SectionTabsTrigger>
+                <SectionTabsTrigger value="phases">Phases</SectionTabsTrigger>
+                <SectionTabsTrigger value="quotation">Quotation</SectionTabsTrigger>
+                <SectionTabsTrigger value="payments">Payments</SectionTabsTrigger>
+                <SectionTabsTrigger value="activity">Activity</SectionTabsTrigger>
+              </SectionTabsList>
 
               <TabsContent value="overview" className="flex flex-col gap-4">
                 {deactivated ? (
@@ -196,7 +201,7 @@ export function PipelineDetail({ id }: { id: string }) {
               <TabsContent value="activity">
                 <ActivityList items={activityQuery.data ?? []} />
               </TabsContent>
-            </Tabs>
+            </SectionTabs>
           </div>
         </>
       ) : null}
