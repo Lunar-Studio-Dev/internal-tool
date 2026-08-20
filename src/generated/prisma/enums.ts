@@ -136,3 +136,31 @@ export const ClientDecision = {
 } as const
 
 export type ClientDecision = (typeof ClientDecision)[keyof typeof ClientDecision]
+
+
+export const TransactionType = {
+  EARNING: 'EARNING',
+  EXPENSE: 'EXPENSE'
+} as const
+
+export type TransactionType = (typeof TransactionType)[keyof typeof TransactionType]
+
+
+export const PaymentMethod = {
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  UPI: 'UPI',
+  CARD: 'CARD',
+  CASH: 'CASH',
+  OTHER: 'OTHER'
+} as const
+
+export type PaymentMethod = (typeof PaymentMethod)[keyof typeof PaymentMethod]
+
+
+export const ProjectStatus = {
+  ACTIVE: 'ACTIVE',
+  ON_HOLD: 'ON_HOLD',
+  COMPLETED: 'COMPLETED'
+} as const
+
+export type ProjectStatus = (typeof ProjectStatus)[keyof typeof ProjectStatus]

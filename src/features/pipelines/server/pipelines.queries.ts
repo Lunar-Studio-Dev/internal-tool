@@ -25,6 +25,7 @@ export async function getPipelineById(id: string) {
     include: {
       business: { select: { id: true, name: true } },
       phases: true,
+      project: { select: { id: true } },
     },
   });
   if (!pipeline) return null;
@@ -39,8 +40,11 @@ export async function getPipelineById(id: string) {
     reasonLabel = reason?.label ?? null;
   }
 
+  const { project, ...rest } = pipeline;
+
   return {
-    ...pipeline,
+    ...rest,
+    handedOff: Boolean(project),
     ownerName: pipeline.ownerId ? (names.get(pipeline.ownerId) ?? null) : null,
     deactivatedByName: pipeline.deactivatedById
       ? (names.get(pipeline.deactivatedById) ?? null)

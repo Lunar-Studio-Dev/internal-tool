@@ -77,7 +77,8 @@ export function DecisionPanel({
 
       {current === "ACCEPTED" ? (
         <p className="text-sm text-muted-foreground">
-          The client accepted the quotation. Initial payment is required before moving to Project Management (PHASE_8).
+          The client accepted the quotation. Record the initial payment on the Payments tab to unlock
+          Project Management, then keep receiving balance payments until the full contract is paid.
         </p>
       ) : null}
 

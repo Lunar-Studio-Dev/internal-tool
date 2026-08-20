@@ -25,3 +25,8 @@ export const deactivatePipelineSchema = z.object({
   reasonId: z.string().min(1, "Select a reason"),
   notes: optionalText(1000),
 });
+
+export const completePipelineSchema = z.object({
+  pipelineId: z.string().min(1),
+  notes: optionalText(1000),
+});

@@ -23,6 +23,24 @@ export async function listFollowUpsForPipeline(pipelineId: string) {
 }
 export type FollowUpItem = Awaited<ReturnType<typeof listFollowUpsForPipeline>>[number];
 
+/** Follow-ups for a business (pending first, then by due date). */
+export async function listFollowUpsForBusiness(businessId: string) {
+  await requirePermission("business:read");
+  const items = await db.followUp.findMany({
+    where: { businessId },
+    orderBy: [{ completedAt: { sort: "asc", nulls: "first" } }, { dueAt: "asc" }],
+    include: {
+      _count: { select: { reschedules: true } },
+    },
+  });
+  const names = await memberNameMap(items.map((f) => f.assigneeId));
+  return items.map(({ _count, ...f }) => ({
+    ...f,
+    assigneeName: f.assigneeId ? (names.get(f.assigneeId) ?? null) : null,
+    rescheduleCount: _count.reschedules,
+  }));
+}
+
 export async function listReschedulesForFollowUp(followUpId: string) {
   await requirePermission("pipeline:read");
   const items = await db.followUpReschedule.findMany({

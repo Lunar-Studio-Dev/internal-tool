@@ -62,3 +62,37 @@ export function nextPhase(type: PhaseType): PhaseType | null {
   if (index < 0 || index === PHASE_ORDER.length - 1) return null;
   return PHASE_ORDER[index + 1] ?? null;
 }
+
+/** True when the pipeline has reached the last phase in the fixed order. */
+export function isFinalPhase(type: PhaseType): boolean {
+  return nextPhase(type) === null;
+}
+
+/** Pipelines that may be deactivated through the standard close flow. */
+export function canDeactivatePipeline(status: PipelineStatus): boolean {
+  return status === PipelineStatus.ACTIVE || status === PipelineStatus.COMPLETED;
+}
+
+/** Whether an active pipeline at the final phase can be marked completed (won). */
+export function canCompletePipeline(params: {
+  status: PipelineStatus;
+  currentPhase: PhaseType;
+  handedOff: boolean;
+}): boolean {
+  return (
+    params.status === PipelineStatus.ACTIVE &&
+    isFinalPhase(params.currentPhase) &&
+    params.handedOff
+  );
+}
+
+/** Hide / reject deactivation once the pipeline is in the final phase or handed to delivery. */
+export function isPipelineDeactivationLocked(params: {
+  currentPhase: PhaseType;
+  handedOff: boolean;
+  scope?: "ui" | "api";
+}): boolean {
+  if (params.handedOff) return true;
+  if (params.scope === "api") return false;
+  return isFinalPhase(params.currentPhase);
+}

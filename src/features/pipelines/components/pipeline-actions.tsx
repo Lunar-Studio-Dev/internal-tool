@@ -1,14 +1,21 @@
 "use client";
 
-import { OctagonXIcon } from "lucide-react";
+import { CheckCircle2Icon, OctagonXIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { CompletePipelineDialog } from "@/features/pipelines/components/complete-pipeline-dialog";
 import {
   DeactivateDialog,
   type DeactivationReasonOption,
 } from "@/features/pipelines/components/deactivate-dialog";
 import { PromoteDialog } from "@/features/pipelines/components/promote-dialog";
-import { PHASE_LABELS, nextPhase } from "@/features/pipelines/constants";
+import {
+  PHASE_LABELS,
+  canCompletePipeline,
+  isFinalPhase,
+  isPipelineDeactivationLocked,
+  nextPhase,
+} from "@/features/pipelines/constants";
 import { PhaseType, PipelineStatus } from "@/generated/prisma/enums";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +23,7 @@ export function PipelineActions({
   pipelineId,
   status,
   currentPhase,
+  handedOff,
   canWrite,
   reasons,
   compact = false,
@@ -24,6 +32,7 @@ export function PipelineActions({
   pipelineId: string;
   status: PipelineStatus;
   currentPhase: PhaseType;
+  handedOff: boolean;
   canWrite: boolean;
   reasons: DeactivationReasonOption[];
   compact?: boolean;
@@ -34,6 +43,8 @@ export function PipelineActions({
   const next = nextPhase(currentPhase);
   const paymentGated =
     currentPhase === PhaseType.QUOTATION && next === PhaseType.PROJECT_MANAGEMENT;
+  const deactivationLocked = isPipelineDeactivationLocked({ currentPhase, handedOff });
+  const completable = canCompletePipeline({ status, currentPhase, handedOff });
   const size = compact ? "sm" : "default";
 
   return (
@@ -44,16 +55,18 @@ export function PipelineActions({
         className,
       )}
     >
-      <DeactivateDialog
-        pipelineId={pipelineId}
-        reasons={reasons}
-        trigger={
-          <Button variant="destructive" size={size} className={cn(compact && "flex-1 sm:flex-none")}>
-            <OctagonXIcon className="size-4" />
-            Deactivate
-          </Button>
-        }
-      />
+      {!deactivationLocked ? (
+        <DeactivateDialog
+          pipelineId={pipelineId}
+          reasons={reasons}
+          trigger={
+            <Button variant="destructive" size={size} className={cn(compact && "flex-1 sm:flex-none")}>
+              <OctagonXIcon className="size-4" />
+              Deactivate
+            </Button>
+          }
+        />
+      ) : null}
       {next && !paymentGated ? (
         <PromoteDialog
           pipelineId={pipelineId}
@@ -66,15 +79,27 @@ export function PipelineActions({
           disabled
           size={size}
           className={cn(compact && "flex-1 sm:flex-none")}
-          title="Gated by payment — coming in a later phase"
+          title="Record the initial payment on the Payments tab to open Project Management"
         >
           {compact
             ? "Payment gated"
             : `Promote to ${PHASE_LABELS[PhaseType.PROJECT_MANAGEMENT]} (payment-gated)`}
         </Button>
-      ) : (
-        <span className="text-sm text-muted-foreground">Final phase reached</span>
-      )}
+      ) : completable ? (
+        <CompletePipelineDialog
+          pipelineId={pipelineId}
+          trigger={
+            <Button size={size} className={cn(compact && "flex-1 sm:flex-none")}>
+              <CheckCircle2Icon className="size-4" />
+              Complete
+            </Button>
+          }
+        />
+      ) : isFinalPhase(currentPhase) ? (
+        <span className="text-sm text-muted-foreground">
+          {handedOff ? "Ready to complete" : "Complete handover on Details to finish"}
+        </span>
+      ) : null}
     </div>
   );
 }

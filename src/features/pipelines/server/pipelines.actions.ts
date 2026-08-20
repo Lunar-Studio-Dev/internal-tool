@@ -2,11 +2,13 @@ import "server-only";
 
 import {
   createPipelineSchema,
+  completePipelineSchema,
   deactivatePipelineSchema,
   promotePipelineSchema,
 } from "@/features/pipelines/schemas/pipeline.schema";
 import { nextPipelineCode } from "@/features/pipelines/server/code-generator";
 import {
+  completePipeline,
   deactivatePipeline,
   promotePhase,
 } from "@/features/pipelines/server/state-machine";
@@ -127,5 +129,25 @@ export async function deactivatePipelineAction(input: unknown): Promise<ActionRe
     return { ok: true };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Could not deactivate the pipeline." };
+  }
+}
+
+export async function completePipelineAction(input: unknown): Promise<ActionResult> {
+  const member = await requirePermission("pipeline:write");
+
+  const parsed = completePipelineSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  try {
+    await completePipeline({
+      pipelineId: parsed.data.pipelineId,
+      actorId: member.id,
+      notes: parsed.data.notes || undefined,
+    });
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not complete the pipeline." };
   }
 }

@@ -30,7 +30,8 @@ import { phaseQueries } from "@/features/phases/api";
 import { PhaseContent } from "@/features/phases/components/phase-content";
 import { QuotationPanel } from "@/features/phases/components/quotation-panel";
 import { DecisionPanel } from "@/features/phases/components/decision-panel";
-import { formatINR } from "@/features/phases/constants";
+import { paymentQueries } from "@/features/payments/api";
+import { PaymentPendingPanel } from "@/features/payments/components/payment-pending-panel";
 import { pipelineQueries } from "@/features/pipelines/api";
 import { PipelineActions } from "@/features/pipelines/components/pipeline-actions";
 import { BusinessAtAGlance } from "@/features/pipelines/components/business-at-a-glance";
@@ -43,6 +44,8 @@ import {
   PHASE_LABELS,
   WORKABLE_PHASES,
 } from "@/features/pipelines/constants";
+import { projectQueries } from "@/features/projects/api";
+import { ProjectSetupPanel } from "@/features/projects/components/project-setup-panel";
 import { useCan } from "@/features/team/hooks/use-current-member";
 import { PhaseType } from "@/generated/prisma/enums";
 
@@ -87,14 +90,25 @@ export function PipelineDetail({ id }: { id: string }) {
   const resourcesQuery = useQuery(pipelineQueries.resources(id));
   const followUpsQuery = useQuery(pipelineQueries.followUps(id));
   const phaseDataQuery = useQuery(phaseQueries.data(id));
+  const paymentStatusQuery = useQuery(paymentQueries.status(id));
+  const paymentsQuery = useQuery(paymentQueries.list(id));
+  const projectSetupQuery = useQuery({
+    ...projectQueries.setup(id),
+    enabled: Boolean(id) && pipelineQuery.data?.currentPhase === "PROJECT_MANAGEMENT",
+  });
   const canWrite = useCan("pipeline:write");
   const canTaskWrite = useCan("task:write");
   const canResourceWrite = useCan("resource:write");
+  const canPaymentWrite = useCan("payment:write");
+  const canProjectWrite = useCan("project:write");
   const pipeline = pipelineQuery.data;
   const phaseData = phaseDataQuery.data;
-  const paymentPending = phaseData?.decision?.decision === "ACCEPTED";
+  const paymentStatus = paymentStatusQuery.data;
+  const paymentPending = Boolean(paymentStatus?.awaitingInitial);
 
   const deactivated = pipeline?.status === "DEACTIVATED";
+  const completed = pipeline?.status === "COMPLETED";
+  const readOnly = deactivated || completed;
   const phaseByType = new Map(pipeline?.phases.map((p) => [p.type, p]) ?? []);
   const current = pipeline ? (phaseByType.get(pipeline.currentPhase) ?? null) : null;
   const stepperIndex = pipeline
@@ -205,6 +219,7 @@ export function PipelineDetail({ id }: { id: string }) {
                     pipelineId={pipeline.id}
                     status={pipeline.status}
                     currentPhase={pipeline.currentPhase}
+                    handedOff={pipeline.handedOff}
                     canWrite={canWrite}
                     reasons={(reasonsQuery.data ?? []).map((r) => ({ id: r.id, label: r.label }))}
                     compact
@@ -288,10 +303,28 @@ export function PipelineDetail({ id }: { id: string }) {
                       pipelineId={pipeline.id}
                       currentPhase={pipeline.currentPhase}
                       phaseData={phaseData}
-                      canWrite={canWrite && !deactivated}
+                      canWrite={canWrite && !readOnly}
                     />
                   ) : null}
                 </QuerySection>
+
+                {pipeline.currentPhase === PhaseType.PROJECT_MANAGEMENT ? (
+                  <QuerySection
+                    isPending={projectSetupQuery.isPending}
+                    isError={projectSetupQuery.isError}
+                    error={projectSetupQuery.error}
+                    skeleton={<FormCardSkeleton fields={5} />}
+                    errorTitle="Could not load project setup"
+                  >
+                    {projectSetupQuery.data ? (
+                      <ProjectSetupPanel
+                        pipelineId={pipeline.id}
+                        context={projectSetupQuery.data}
+                        canWrite={canProjectWrite && !readOnly}
+                      />
+                    ) : null}
+                  </QuerySection>
+                ) : null}
               </TabsContent>
 
               <TabsContent value="tasks">
@@ -308,7 +341,7 @@ export function PipelineDetail({ id }: { id: string }) {
                     currentPhase={pipeline.currentPhase}
                     tasks={taskRows}
                     canWrite={canTaskWrite}
-                    deactivated={deactivated}
+                    deactivated={readOnly}
                   />
                 </QuerySection>
               </TabsContent>
@@ -327,7 +360,7 @@ export function PipelineDetail({ id }: { id: string }) {
                     currentPhase={pipeline.currentPhase}
                     followUps={followUpRows}
                     canWrite={canTaskWrite}
-                    deactivated={deactivated}
+                    deactivated={readOnly}
                   />
                 </QuerySection>
               </TabsContent>
@@ -346,7 +379,7 @@ export function PipelineDetail({ id }: { id: string }) {
                     currentPhase={pipeline.currentPhase}
                     resources={resourceRows}
                     canWrite={canResourceWrite}
-                    deactivated={deactivated}
+                    deactivated={readOnly}
                   />
                 </QuerySection>
               </TabsContent>
@@ -356,33 +389,33 @@ export function PipelineDetail({ id }: { id: string }) {
                   isPending={phaseDataQuery.isPending}
                   isError={phaseDataQuery.isError}
                   error={phaseDataQuery.error}
-                  skeleton={<FormCardSkeleton fields={3} />}
+                  skeleton={<TabPanelSkeleton variant="list" />}
                   errorTitle="Could not load quotations"
                 >
-                  {phaseData && pipeline.currentPhase === PhaseType.QUOTATION ? (
+                  {phaseData &&
+                  (phaseData.quotations.length > 0 ||
+                    pipeline.currentPhase === PhaseType.QUOTATION) ? (
                     <div className="flex flex-col gap-4">
                       <QuotationPanel
                         pipelineId={pipeline.id}
                         quotations={phaseData.quotations}
-                        canWrite={canWrite && !deactivated}
-                      />
-                      <DecisionPanel
-                        pipelineId={pipeline.id}
                         decision={phaseData.decision}
-                        reasons={(reasonsQuery.data ?? []).map((r) => ({
-                          id: r.id,
-                          label: r.label,
-                        }))}
-                        canWrite={canWrite && !deactivated}
+                        paymentStatus={paymentStatusQuery.data}
+                        canWrite={canWrite && !readOnly}
+                        showCreate={pipeline.currentPhase === PhaseType.QUOTATION}
+                        onOpenPayments={() => setTab("payments")}
                       />
-                    </div>
-                  ) : phaseData?.quotations.length ? (
-                    <div className="flex flex-col gap-2">
-                      {phaseData.quotations.map((q) => (
-                        <div key={q.id} className="rounded-lg border p-3 text-sm">
-                          V{q.version} · {formatINR(q.subtotal)} · {q.status}
-                        </div>
-                      ))}
+                      {pipeline.currentPhase === PhaseType.QUOTATION ? (
+                        <DecisionPanel
+                          pipelineId={pipeline.id}
+                          decision={phaseData.decision}
+                          reasons={(reasonsQuery.data ?? []).map((r) => ({
+                            id: r.id,
+                            label: r.label,
+                          }))}
+                          canWrite={canWrite && !readOnly}
+                        />
+                      ) : null}
                     </div>
                   ) : (
                     <EmptyState
@@ -394,11 +427,36 @@ export function PipelineDetail({ id }: { id: string }) {
                 </QuerySection>
               </TabsContent>
               <TabsContent value="payments">
-                <EmptyState
-                  icon={CreditCardIcon}
-                  title="No payments yet"
-                  description="Payments arrive in a later phase."
-                />
+                <QuerySection
+                  isPending={paymentStatusQuery.isPending || paymentsQuery.isPending}
+                  isError={paymentStatusQuery.isError || paymentsQuery.isError}
+                  error={paymentStatusQuery.error ?? paymentsQuery.error}
+                  skeleton={<FormCardSkeleton fields={4} />}
+                  errorTitle="Could not load payments"
+                >
+                  {paymentStatusQuery.data ? (
+                    <PaymentPendingPanel
+                      pipelineId={pipeline.id}
+                      businessId={pipeline.business.id}
+                      businessName={pipeline.business.name}
+                      pipelineCode={pipeline.code}
+                      status={paymentStatusQuery.data}
+                      payments={paymentsQuery.data ?? []}
+                      canWrite={canPaymentWrite}
+                      canFollowUp={canTaskWrite}
+                      canHandoverWrite={canProjectWrite}
+                      deactivated={readOnly}
+                      hasProject={Boolean(projectSetupQuery.data?.project)}
+                      onHandover={() => setTab("details")}
+                    />
+                  ) : (
+                    <EmptyState
+                      icon={CreditCardIcon}
+                      title="No payments yet"
+                      description="Payments appear after a quotation is published."
+                    />
+                  )}
+                </QuerySection>
               </TabsContent>
 
               <TabsContent value="activity">

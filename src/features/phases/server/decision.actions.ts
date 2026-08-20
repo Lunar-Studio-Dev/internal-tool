@@ -1,7 +1,7 @@
 import "server-only";
 
 import { clientDecisionSchema } from "@/features/phases/schemas/phase.schema";
-import { deactivatePipeline } from "@/features/pipelines/server/state-machine";
+import { deactivatePipeline, promotePhaseInTx } from "@/features/pipelines/server/state-machine";
 import { ClientDecision, PhaseType, PipelineStatus } from "@/generated/prisma/enums";
 import { logActivity } from "@/lib/activity";
 import { requirePermission } from "@/lib/auth/member";
@@ -115,20 +115,34 @@ export async function setClientDecisionAction(input: unknown): Promise<ActionRes
       return { ok: true };
     }
 
-    // ACCEPTED → payment pending (PHASE_8); pipeline stays in Quotation.
-    await db.pipelineDecision.upsert({
-      where: { pipelineId: d.pipelineId },
-      create: {
-        pipelineId: d.pipelineId,
-        decision: ClientDecision.ACCEPTED,
-        decidedAt: new Date(),
-        notes: emptyToNull(d.notes),
-      },
-      update: {
-        decision: ClientDecision.ACCEPTED,
-        decidedAt: new Date(),
-        notes: emptyToNull(d.notes),
-      },
+    // ACCEPTED → payment pending; pipeline stays in Quotation unless initial payment is ₹0.
+    const acceptedResult = await db.$transaction(async (tx) => {
+      await tx.pipelineDecision.upsert({
+        where: { pipelineId: d.pipelineId },
+        create: {
+          pipelineId: d.pipelineId,
+          decision: ClientDecision.ACCEPTED,
+          decidedAt: new Date(),
+          notes: emptyToNull(d.notes),
+        },
+        update: {
+          decision: ClientDecision.ACCEPTED,
+          decidedAt: new Date(),
+          notes: emptyToNull(d.notes),
+        },
+      });
+
+      let promoted = false;
+      if (currentQuotation.initialPayment <= 0) {
+        await promotePhaseInTx(tx, {
+          pipelineId: d.pipelineId,
+          actorId: member.id,
+          notes: "Promoted — no initial payment required",
+          viaPaymentGate: true,
+        });
+        promoted = true;
+      }
+      return { promoted };
     });
 
     await logActivity({
@@ -141,8 +155,20 @@ export async function setClientDecisionAction(input: unknown): Promise<ActionRes
       metadata: {
         quotationVersion: currentQuotation.version,
         initialPayment: currentQuotation.initialPayment,
+        promoted: acceptedResult.promoted,
       },
     });
+    if (acceptedResult.promoted) {
+      await logActivity({
+        actorId: member.id,
+        action: "pipeline.promoted",
+        entityType: "Pipeline",
+        entityId: d.pipelineId,
+        businessId: pipeline.businessId,
+        pipelineId: d.pipelineId,
+        metadata: { from: "QUOTATION", to: "PROJECT_MANAGEMENT", via: "zero-initial-payment" },
+      });
+    }
     return { ok: true };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Could not record decision." };

@@ -71,11 +71,13 @@ model Business {
   social      Json? // { linkedin, instagram, facebook, x }
   metrics     Json? // business research / metrics (PHASE_7 also writes here)
   notes       String?
-  contacts    Contact[]
-  pipelines   Pipeline[]
-  createdById String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  contacts     Contact[]
+  pipelines    Pipeline[]
+  transactions Transaction[]
+  projects     Project[]
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([name])
   @@index([email])
@@ -174,6 +176,9 @@ model Pipeline {
   requirement          Requirement?
   quotations           Quotation[]
   decision             PipelineDecision?
+  payments             Payment[]
+  transactions         Transaction[]
+  project              Project?
   deactivationReasonId String?
   deactivatedAt        DateTime?
   deactivatedById      String?
@@ -421,4 +426,95 @@ model PipelineDecision {
   notes      String?
 
   @@map("pipeline_decision")
+}
+
+// ─── PHASE_8 — Payment gate & project handoff ───
+
+enum TransactionType {
+  EARNING
+  EXPENSE
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  UPI
+  CARD
+  CASH
+  OTHER
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+}
+
+/// Ledger entry. PHASE_8 creates EARNING on payment; EXPENSE arrives in PHASE_10.
+model Transaction {
+  id          String          @id @default(cuid())
+  type        TransactionType
+  amount      Int // paise
+  date        DateTime
+  category    String?
+  description String?
+  businessId  String?
+  business    Business?       @relation(fields: [businessId], references: [id])
+  pipelineId  String?
+  pipeline    Pipeline?       @relation(fields: [pipelineId], references: [id])
+  quotationId String?
+  reference   String?
+  createdById String?
+  createdAt   DateTime        @default(now())
+  payment     Payment?
+
+  @@index([type, date])
+  @@index([businessId])
+  @@index([pipelineId])
+  @@map("transaction")
+}
+
+/// Money received against a quotation. Multiple rows allowed (partial payments).
+model Payment {
+  id            String        @id @default(cuid())
+  pipelineId    String
+  pipeline      Pipeline      @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  quotationId   String
+  amount        Int // paise
+  date          DateTime
+  method        PaymentMethod @default(BANK_TRANSFER)
+  reference     String?
+  notes         String?
+  transactionId String?       @unique
+  transaction   Transaction?  @relation(fields: [transactionId], references: [id])
+  createdById   String?
+  createdAt     DateTime      @default(now())
+
+  @@index([pipelineId])
+  @@index([quotationId])
+  @@map("payment")
+}
+
+/// Delivery project created after the payment gate opens Project Management.
+model Project {
+  id          String        @id @default(cuid())
+  code        String        @unique // PRJ-00123
+  pipelineId  String        @unique
+  pipeline    Pipeline      @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  businessId  String
+  business    Business      @relation(fields: [businessId], references: [id])
+  quotationId String?
+  name        String
+  managerId   String?
+  startDate   DateTime?
+  deadline    DateTime?
+  notes       String?
+  status      ProjectStatus @default(ACTIVE)
+  handoff     Json?
+  createdById String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([businessId])
+  @@index([status])
+  @@map("project")
 }

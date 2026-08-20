@@ -111,3 +111,15 @@ export function useDeactivatePipeline() {
     onSuccess: () => invalidatePipelineWrites(queryClient),
   });
 }
+
+export function useCompletePipeline() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { pipelineId: string; notes?: string }) =>
+      api<MutationOk>(`/api/pipelines/${input.pipelineId}/complete`, {
+        method: "POST",
+        body: JSON.stringify({ notes: input.notes }),
+      }),
+    onSuccess: () => invalidatePipelineWrites(queryClient),
+  });
+}

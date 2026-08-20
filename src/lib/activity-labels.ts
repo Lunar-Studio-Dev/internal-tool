@@ -9,6 +9,7 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   "pipeline.created": "created this pipeline",
   "pipeline.promoted": "promoted the pipeline",
   "pipeline.deactivated": "deactivated the pipeline",
+  "pipeline.completed": "completed the pipeline",
   "task.created": "created a task",
   "task.updated": "updated a task",
   "task.completed": "completed a task",

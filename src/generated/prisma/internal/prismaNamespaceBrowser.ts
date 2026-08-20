@@ -66,7 +66,10 @@ export const ModelName = {
   BusinessUnderstanding: 'BusinessUnderstanding',
   Requirement: 'Requirement',
   Quotation: 'Quotation',
-  PipelineDecision: 'PipelineDecision'
+  PipelineDecision: 'PipelineDecision',
+  Transaction: 'Transaction',
+  Payment: 'Payment',
+  Project: 'Project'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -342,6 +345,62 @@ export const PipelineDecisionScalarFieldEnum = {
 } as const
 
 export type PipelineDecisionScalarFieldEnum = (typeof PipelineDecisionScalarFieldEnum)[keyof typeof PipelineDecisionScalarFieldEnum]
+
+
+export const TransactionScalarFieldEnum = {
+  id: 'id',
+  type: 'type',
+  amount: 'amount',
+  date: 'date',
+  category: 'category',
+  description: 'description',
+  businessId: 'businessId',
+  pipelineId: 'pipelineId',
+  quotationId: 'quotationId',
+  reference: 'reference',
+  createdById: 'createdById',
+  createdAt: 'createdAt'
+} as const
+
+export type TransactionScalarFieldEnum = (typeof TransactionScalarFieldEnum)[keyof typeof TransactionScalarFieldEnum]
+
+
+export const PaymentScalarFieldEnum = {
+  id: 'id',
+  pipelineId: 'pipelineId',
+  quotationId: 'quotationId',
+  amount: 'amount',
+  date: 'date',
+  method: 'method',
+  reference: 'reference',
+  notes: 'notes',
+  transactionId: 'transactionId',
+  createdById: 'createdById',
+  createdAt: 'createdAt'
+} as const
+
+export type PaymentScalarFieldEnum = (typeof PaymentScalarFieldEnum)[keyof typeof PaymentScalarFieldEnum]
+
+
+export const ProjectScalarFieldEnum = {
+  id: 'id',
+  code: 'code',
+  pipelineId: 'pipelineId',
+  businessId: 'businessId',
+  quotationId: 'quotationId',
+  name: 'name',
+  managerId: 'managerId',
+  startDate: 'startDate',
+  deadline: 'deadline',
+  notes: 'notes',
+  status: 'status',
+  handoff: 'handoff',
+  createdById: 'createdById',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ProjectScalarFieldEnum = (typeof ProjectScalarFieldEnum)[keyof typeof ProjectScalarFieldEnum]
 
 
 export const SortOrder = {

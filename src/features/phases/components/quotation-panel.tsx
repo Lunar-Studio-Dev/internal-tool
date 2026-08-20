@@ -2,7 +2,7 @@
 
 import { type FormEvent, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Loader2Icon, PlusIcon } from "lucide-react";
+import { ChevronRightIcon, Loader2Icon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { FieldError, FieldLabel } from "@/components/common/form-field";
@@ -18,11 +18,20 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useCreateQuotation, type QuotationDto } from "@/features/phases/api";
+import {
+  useCreateQuotation,
+  type PipelineDecisionDto,
+  type QuotationDto,
+} from "@/features/phases/api";
+import { QuotationDetailDialog } from "@/features/phases/components/quotation-detail-dialog";
+import { QuotationKpis } from "@/features/phases/components/quotation-kpis";
 import { formatINR, paiseToRupees, rupeesToPaise } from "@/features/phases/constants";
+import { QUOTATION_STATUS_LABELS } from "@/features/phases/quotation-metrics";
 import { createQuotationSchema, quotationLineItemSchema } from "@/features/phases/schemas/phase.schema";
+import type { PaymentStatusDto } from "@/features/payments/api";
 import { mutationErrorMessage } from "@/lib/api/errors";
 import { parseForm, type FieldErrors } from "@/lib/form";
+import { cn } from "@/lib/utils";
 
 type LineItem = { item: string; qty: number; ratePaise: number; amountPaise: number };
 
@@ -183,60 +192,139 @@ function CreateQuotationDialog({
   );
 }
 
-function QuotationRow({ q }: { q: QuotationDto }) {
+function QuotationRow({
+  quotation,
+  onSelect,
+}: {
+  quotation: QuotationDto;
+  onSelect: (quotation: QuotationDto) => void;
+}) {
+  const statusLabel =
+    QUOTATION_STATUS_LABELS[quotation.status as keyof typeof QUOTATION_STATUS_LABELS] ??
+    quotation.status;
+
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-      <div>
-        <span className="font-medium">V{q.version}</span>
-        {q.title ? <span className="text-muted-foreground"> · {q.title}</span> : null}
+    <button
+      type="button"
+      onClick={() => onSelect(quotation)}
+      className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-3 text-left text-sm transition-colors hover:bg-muted/50"
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-medium">V{quotation.version}</span>
+          {quotation.title ? (
+            <span className="truncate text-muted-foreground">{quotation.title}</span>
+          ) : null}
+        </div>
         <p className="text-xs text-muted-foreground">
-          {formatINR(q.subtotal)}
-          {q.validUntil ? ` · Valid ${format(new Date(q.validUntil), "d MMM yyyy")}` : null}
+          {formatINR(quotation.subtotal)}
+          {quotation.validUntil
+            ? ` · Valid ${format(new Date(quotation.validUntil), "d MMM yyyy")}`
+            : null}
+          {quotation.createdAt
+            ? ` · Created ${format(new Date(quotation.createdAt), "d MMM yyyy")}`
+            : null}
         </p>
       </div>
-      <Badge variant={q.status === "CURRENT" ? "default" : "secondary"}>{q.status}</Badge>
-    </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <Badge variant={quotation.status === "CURRENT" ? "default" : "secondary"}>
+          {statusLabel}
+        </Badge>
+        <ChevronRightIcon className="size-4 text-muted-foreground" />
+      </div>
+    </button>
   );
 }
 
 export function QuotationPanel({
   pipelineId,
   quotations,
+  decision,
+  paymentStatus,
   canWrite,
+  showCreate = false,
+  onOpenPayments,
 }: {
   pipelineId: string;
   quotations: QuotationDto[];
+  decision: PipelineDecisionDto | null;
+  paymentStatus?: PaymentStatusDto | null;
   canWrite: boolean;
+  showCreate?: boolean;
+  onOpenPayments?: () => void;
 }) {
+  const [selected, setSelected] = useState<QuotationDto | null>(null);
   const current = quotations.find((q) => q.status === "CURRENT");
 
+  function openQuotation(quotation: QuotationDto) {
+    setSelected(quotation);
+  }
+
   return (
-    <div className="flex flex-col gap-4 rounded-lg border p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-medium">Quotation</p>
-        <CreateQuotationDialog pipelineId={pipelineId} canWrite={canWrite} />
+    <div className="flex flex-col gap-4">
+      <QuotationKpis
+        quotations={quotations}
+        decision={decision}
+        paymentStatus={paymentStatus}
+        onOpenPayments={onOpenPayments}
+        onOpenCurrent={current ? () => openQuotation(current) : undefined}
+      />
+
+      <div className="flex flex-col gap-4 rounded-lg border p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-medium">Quotation versions</p>
+            <p className="text-xs text-muted-foreground">
+              Click a version to view scope, line items, and terms.
+            </p>
+          </div>
+          {showCreate ? <CreateQuotationDialog pipelineId={pipelineId} canWrite={canWrite} /> : null}
+        </div>
+
+        {current ? (
+          <button
+            type="button"
+            onClick={() => openQuotation(current)}
+            className={cn(
+              "rounded-md border bg-muted/30 p-3 text-left text-sm transition-colors hover:bg-muted/50",
+            )}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-medium">
+                Current · V{current.version} · {formatINR(current.subtotal)}
+              </p>
+              <Badge>Current</Badge>
+            </div>
+            <p className="mt-1 text-muted-foreground">
+              Initial payment: {formatINR(current.initialPayment)}
+              {current.paymentTerms ? ` · ${current.paymentTerms}` : ""}
+            </p>
+          </button>
+        ) : quotations.length ? (
+          <p className="text-sm text-muted-foreground">No current quotation — latest version is shown in history.</p>
+        ) : (
+          <p className="text-sm text-muted-foreground">No quotation yet.</p>
+        )}
+
+        {quotations.length > 0 ? (
+          <div className="flex flex-col divide-y rounded-md border">
+            <p className="px-3 py-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              All versions
+            </p>
+            {quotations.map((q) => (
+              <QuotationRow key={q.id} quotation={q} onSelect={openQuotation} />
+            ))}
+          </div>
+        ) : null}
       </div>
-      {current ? (
-        <div className="rounded-md border bg-muted/30 p-3 text-sm">
-          <p className="font-medium">
-            Version V{current.version} · {formatINR(current.subtotal)}
-          </p>
-          <p className="text-muted-foreground">
-            Initial payment: {formatINR(current.initialPayment)}
-            {current.paymentTerms ? ` · ${current.paymentTerms}` : ""}
-          </p>
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">No current quotation yet.</p>
-      )}
-      {quotations.length > 0 ? (
-        <div className="flex flex-col divide-y">
-          <p className="pb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">History</p>
-          {quotations.map((q) => (
-            <QuotationRow key={q.id} q={q} />
-          ))}
-        </div>
-      ) : null}
+
+      <QuotationDetailDialog
+        quotation={selected}
+        open={Boolean(selected)}
+        onOpenChange={(open) => {
+          if (!open) setSelected(null);
+        }}
+      />
     </div>
   );
 }

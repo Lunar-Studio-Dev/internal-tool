@@ -112,3 +112,18 @@ export type Quotation = Prisma.QuotationModel
  * 
  */
 export type PipelineDecision = Prisma.PipelineDecisionModel
+/**
+ * Model Transaction
+ * Ledger entry. PHASE_8 creates EARNING on payment; EXPENSE arrives in PHASE_10.
+ */
+export type Transaction = Prisma.TransactionModel
+/**
+ * Model Payment
+ * Money received against a quotation. Multiple rows allowed (partial payments).
+ */
+export type Payment = Prisma.PaymentModel
+/**
+ * Model Project
+ * Delivery project created after the payment gate opens Project Management.
+ */
+export type Project = Prisma.ProjectModel

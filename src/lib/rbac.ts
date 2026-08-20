@@ -82,7 +82,7 @@ export function getPermissions(roles: RoleName[]): Set<Permission> {
 // lets DEVELOPER (project:write, no pipeline:read) read their assigned projects.
 const READ_IMPLIED_BY: Record<string, Permission[]> = {
   "quotation:read": ["quotation:write", "pipeline:read"],
-  "payment:read": ["payment:write", "accounts:read"],
+  "payment:read": ["payment:write", "accounts:read", "pipeline:read"],
   "project:read": ["project:write", "pipeline:read"],
 };
 

@@ -22,9 +22,11 @@ export type TaskRow = {
   dueAt: string | null;
   assigneeName: string | null;
   phaseType?: PhaseType | null;
+  pipelineId?: string | null;
+  pipelineCode?: string | null;
 };
 
-function TaskRowItem({ item }: { item: TaskRow }) {
+function TaskRowItem({ item, showPipeline }: { item: TaskRow; showPipeline?: boolean }) {
   const completeTask = useCompleteTask();
   const done = item.status === "COMPLETED" || item.status === "CANCELLED";
   const overdue = isTaskOverdue(item);
@@ -62,6 +64,13 @@ function TaskRowItem({ item }: { item: TaskRow }) {
               {PHASE_LABELS[item.phaseType]}
             </Badge>
           ) : null}
+          {showPipeline && item.pipelineCode && item.pipelineId ? (
+            <Badge variant="outline" className="font-normal">
+              <Link href={`/pipelines/${item.pipelineId}`} className="hover:underline">
+                {item.pipelineCode}
+              </Link>
+            </Badge>
+          ) : null}
           {overdue ? (
             <Badge variant="outline" className="border-amber-500/50 text-amber-700 dark:text-amber-400">
               Overdue
@@ -83,9 +92,11 @@ function TaskRowItem({ item }: { item: TaskRow }) {
 
 export function TaskList({
   items,
+  showPipeline = false,
   emptyDescription = "Tasks for this pipeline will appear here.",
 }: {
   items: TaskRow[];
+  showPipeline?: boolean;
   emptyDescription?: string;
 }) {
   if (items.length === 0) {
@@ -95,7 +106,7 @@ export function TaskList({
   return (
     <div className="divide-y rounded-lg border px-3">
       {items.map((item) => (
-        <TaskRowItem key={item.id} item={item} />
+        <TaskRowItem key={item.id} item={item} showPipeline={showPipeline} />
       ))}
     </div>
   );

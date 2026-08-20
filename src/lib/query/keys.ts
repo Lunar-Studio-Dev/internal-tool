@@ -12,6 +12,9 @@ export const queryKeys = {
     activity: (id: string) => [...queryKeys.businesses.detail(id), "activity"] as const,
     tasks: (id: string) => [...queryKeys.businesses.detail(id), "tasks"] as const,
     resources: (id: string) => [...queryKeys.businesses.detail(id), "resources"] as const,
+    followUps: (id: string) => [...queryKeys.businesses.detail(id), "follow-ups"] as const,
+    financials: (id: string) => [...queryKeys.businesses.detail(id), "financials"] as const,
+    pipelines: (id: string) => [...queryKeys.businesses.detail(id), "pipelines"] as const,
   },
   pipelines: {
     all: ["pipelines"] as const,
@@ -26,6 +29,9 @@ export const queryKeys = {
     phases: (id: string) => [...queryKeys.pipelines.detail(id), "phases"] as const,
     quotations: (id: string) => [...queryKeys.pipelines.detail(id), "quotations"] as const,
     decision: (id: string) => [...queryKeys.pipelines.detail(id), "decision"] as const,
+    payments: (id: string) => [...queryKeys.pipelines.detail(id), "payments"] as const,
+    paymentStatus: (id: string) => [...queryKeys.pipelines.detail(id), "payment-status"] as const,
+    project: (id: string) => [...queryKeys.pipelines.detail(id), "project"] as const,
   },
   tasks: {
     all: ["tasks"] as const,

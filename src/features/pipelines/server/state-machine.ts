@@ -1,6 +1,6 @@
 import "server-only";
 
-import { nextPhase } from "@/features/pipelines/constants";
+import { isFinalPhase, isPipelineDeactivationLocked, nextPhase } from "@/features/pipelines/constants";
 import { PhaseStatus, PhaseType, PipelineStatus } from "@/generated/prisma/enums";
 import { logActivity } from "@/lib/activity";
 import { db } from "@/lib/db";
@@ -10,6 +10,68 @@ export type TransitionResult = {
   from: PhaseType;
   to?: PhaseType;
 };
+
+type Tx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
+
+/**
+ * Core promote used inside an existing transaction. Quotation → Project
+ * Management is blocked unless `viaPaymentGate` is true (PHASE_8 only path).
+ */
+export async function promotePhaseInTx(
+  tx: Tx,
+  params: {
+    pipelineId: string;
+    actorId: string;
+    notes?: string;
+    viaPaymentGate?: boolean;
+  },
+): Promise<TransitionResult> {
+  const { pipelineId, actorId, notes, viaPaymentGate = false } = params;
+
+  const pipeline = await tx.pipeline.findUnique({ where: { id: pipelineId } });
+  if (!pipeline) throw new Error("Pipeline not found.");
+  if (pipeline.status !== PipelineStatus.ACTIVE) {
+    throw new Error("Only an active pipeline can be promoted.");
+  }
+
+  const from = pipeline.currentPhase;
+  const to = nextPhase(from);
+  if (!to) throw new Error("This pipeline is already at the final phase.");
+
+  if (from === PhaseType.QUOTATION && to === PhaseType.PROJECT_MANAGEMENT && !viaPaymentGate) {
+    throw new Error("Moving to Project Management requires the initial payment to be recorded.");
+  }
+  if (viaPaymentGate && !(from === PhaseType.QUOTATION && to === PhaseType.PROJECT_MANAGEMENT)) {
+    throw new Error("Payment gate only applies when promoting Quotation to Project Management.");
+  }
+
+  const current = await tx.pipelinePhase.findUnique({
+    where: { pipelineId_type: { pipelineId, type: from } },
+  });
+  if (!current || current.status !== PhaseStatus.ACTIVE) {
+    throw new Error("The current phase is not active.");
+  }
+
+  await tx.pipelinePhase.update({
+    where: { id: current.id },
+    data: {
+      status: PhaseStatus.PROMOTED,
+      promotedAt: new Date(),
+      promotedById: actorId,
+      promoteNotes: notes ?? null,
+    },
+  });
+
+  await tx.pipelinePhase.upsert({
+    where: { pipelineId_type: { pipelineId, type: to } },
+    create: { pipelineId, type: to, status: PhaseStatus.ACTIVE, ownerId: pipeline.ownerId },
+    update: { status: PhaseStatus.ACTIVE },
+  });
+
+  await tx.pipeline.update({ where: { id: pipelineId }, data: { currentPhase: to } });
+
+  return { businessId: pipeline.businessId, from, to };
+}
 
 /**
  * Advance a pipeline to the next phase (forward-only, sequential). Runs in a
@@ -23,49 +85,9 @@ export async function promotePhase(params: {
 }): Promise<TransitionResult> {
   const { pipelineId, actorId, notes } = params;
 
-  const result = await db.$transaction(async (tx) => {
-    const pipeline = await tx.pipeline.findUnique({ where: { id: pipelineId } });
-    if (!pipeline) throw new Error("Pipeline not found.");
-    if (pipeline.status !== PipelineStatus.ACTIVE) {
-      throw new Error("Only an active pipeline can be promoted.");
-    }
-
-    const from = pipeline.currentPhase;
-    const to = nextPhase(from);
-    if (!to) throw new Error("This pipeline is already at the final phase.");
-    // Quotation → Project Management is gated by payment (PHASE_8), not a plain promote.
-    if (from === PhaseType.QUOTATION && to === PhaseType.PROJECT_MANAGEMENT) {
-      throw new Error("Moving to Project Management is gated by payment and isn't available yet.");
-    }
-
-    const current = await tx.pipelinePhase.findUnique({
-      where: { pipelineId_type: { pipelineId, type: from } },
-    });
-    if (!current || current.status !== PhaseStatus.ACTIVE) {
-      throw new Error("The current phase is not active.");
-    }
-
-    await tx.pipelinePhase.update({
-      where: { id: current.id },
-      data: {
-        status: PhaseStatus.PROMOTED,
-        promotedAt: new Date(),
-        promotedById: actorId,
-        promoteNotes: notes ?? null,
-      },
-    });
-
-    // Idempotent on the unique (pipelineId, type): create the next phase ACTIVE.
-    await tx.pipelinePhase.upsert({
-      where: { pipelineId_type: { pipelineId, type: to } },
-      create: { pipelineId, type: to, status: PhaseStatus.ACTIVE, ownerId: pipeline.ownerId },
-      update: { status: PhaseStatus.ACTIVE },
-    });
-
-    await tx.pipeline.update({ where: { id: pipelineId }, data: { currentPhase: to } });
-
-    return { businessId: pipeline.businessId, from, to } satisfies TransitionResult;
-  });
+  const result = await db.$transaction(async (tx) =>
+    promotePhaseInTx(tx, { pipelineId, actorId, notes, viaPaymentGate: false }),
+  );
 
   await logActivity({
     actorId,
@@ -98,6 +120,22 @@ export async function deactivatePipeline(params: {
     if (!pipeline) throw new Error("Pipeline not found.");
     if (pipeline.status !== PipelineStatus.ACTIVE) {
       throw new Error("This pipeline is not active.");
+    }
+
+    const project = await tx.project.findUnique({
+      where: { pipelineId },
+      select: { id: true },
+    });
+    if (
+      isPipelineDeactivationLocked({
+        currentPhase: pipeline.currentPhase,
+        handedOff: Boolean(project),
+        scope: "api",
+      })
+    ) {
+      throw new Error(
+        "This pipeline has been handed to the development team and cannot be deactivated.",
+      );
     }
 
     const reason = await tx.deactivationReason.findUnique({ where: { id: reasonId } });
@@ -137,4 +175,69 @@ export async function deactivatePipeline(params: {
   });
 
   return result;
+}
+
+/**
+ * Mark a handed-off pipeline as completed (won). Requires final phase + project
+ * handoff. Idempotent when already completed.
+ */
+export async function completePipeline(params: {
+  pipelineId: string;
+  actorId: string;
+  notes?: string;
+}): Promise<TransitionResult> {
+  const { pipelineId, actorId, notes } = params;
+
+  const result = await db.$transaction(async (tx) => {
+    const pipeline = await tx.pipeline.findUnique({ where: { id: pipelineId } });
+    if (!pipeline) throw new Error("Pipeline not found.");
+    if (pipeline.status === PipelineStatus.COMPLETED) {
+      return { businessId: pipeline.businessId, from: pipeline.currentPhase, alreadyCompleted: true };
+    }
+    if (pipeline.status !== PipelineStatus.ACTIVE) {
+      throw new Error("Only an active pipeline can be completed.");
+    }
+    if (!isFinalPhase(pipeline.currentPhase)) {
+      throw new Error("The pipeline must reach the final phase before it can be completed.");
+    }
+
+    const project = await tx.project.findUnique({
+      where: { pipelineId },
+      select: { id: true },
+    });
+    if (!project) {
+      throw new Error("Hand the project to the development team before completing the pipeline.");
+    }
+
+    await tx.pipelinePhase.updateMany({
+      where: { pipelineId, type: pipeline.currentPhase, status: PhaseStatus.ACTIVE },
+      data: {
+        status: PhaseStatus.PROMOTED,
+        promotedAt: new Date(),
+        promotedById: actorId,
+        promoteNotes: notes ?? null,
+      },
+    });
+
+    await tx.pipeline.update({
+      where: { id: pipelineId },
+      data: { status: PipelineStatus.COMPLETED },
+    });
+
+    return { businessId: pipeline.businessId, from: pipeline.currentPhase, alreadyCompleted: false };
+  });
+
+  if (!result.alreadyCompleted) {
+    await logActivity({
+      actorId,
+      action: "pipeline.completed",
+      entityType: "Pipeline",
+      entityId: pipelineId,
+      businessId: result.businessId,
+      pipelineId,
+      metadata: { phase: result.from, notes: notes ?? null },
+    });
+  }
+
+  return { businessId: result.businessId, from: result.from };
 }

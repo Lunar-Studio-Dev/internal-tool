@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { format } from "date-fns";
 import { EyeIcon, Trash2Icon, Loader2Icon } from "lucide-react";
@@ -34,15 +35,19 @@ export type ResourceListItem = {
   sizeBytes?: number | null;
   phaseType?: PhaseType | null;
   createdAt?: string | null;
+  pipelineId?: string | null;
+  pipelineCode?: string | null;
 };
 
 function ResourceRowItem({
   item,
   canWrite,
+  showPipeline,
   onOpen,
 }: {
   item: ResourceListItem;
   canWrite: boolean;
+  showPipeline?: boolean;
   onOpen: () => void;
 }) {
   const deleteResource = useDeleteResource();
@@ -73,6 +78,13 @@ function ResourceRowItem({
           {item.phaseType ? (
             <Badge variant="outline" className="font-normal">
               {PHASE_LABELS[item.phaseType]}
+            </Badge>
+          ) : null}
+          {showPipeline && item.pipelineCode && item.pipelineId ? (
+            <Badge variant="outline" className="font-normal">
+              <Link href={`/pipelines/${item.pipelineId}`} className="hover:underline">
+                {item.pipelineCode}
+              </Link>
             </Badge>
           ) : null}
         </div>
@@ -127,10 +139,12 @@ function ResourceRowItem({
 export function ResourceList({
   items,
   canWrite,
+  showPipeline = false,
   emptyDescription = "Resources for this pipeline will appear here.",
 }: {
   items: ResourceListItem[];
   canWrite: boolean;
+  showPipeline?: boolean;
   emptyDescription?: string;
 }) {
   const [preview, setPreview] = useState<ResourceListItem | null>(null);
@@ -147,6 +161,7 @@ export function ResourceList({
             key={item.id}
             item={item}
             canWrite={canWrite}
+            showPipeline={showPipeline}
             onOpen={() => setPreview(item)}
           />
         ))}

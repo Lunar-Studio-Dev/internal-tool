@@ -3,9 +3,17 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { PlusIcon, SearchIcon } from "lucide-react";
+import {
+  ActivityIcon,
+  CheckCircle2Icon,
+  PauseCircleIcon,
+  PlusIcon,
+  SearchIcon,
+  WorkflowIcon,
+} from "lucide-react";
 
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
+import { MetricCard } from "@/components/common/metric-card";
 import { QueryGate } from "@/components/common/query-gate";
 import { TablePageSkeleton } from "@/components/common/skeletons";
 import { StatusBadge } from "@/components/common/status-badge";
@@ -25,6 +33,12 @@ import {
   PIPELINE_STATUS_OPTIONS,
   WORKABLE_PHASES,
 } from "@/features/pipelines/constants";
+import {
+  computePipelineListMetrics,
+  filterPipelineList,
+  pipelineListFilterToStatus,
+  type PipelineListFilter,
+} from "@/features/pipelines/pipeline-list-metrics";
 import { useCan } from "@/features/team/hooks/use-current-member";
 import { PhaseType, PipelineStatus } from "@/generated/prisma/enums";
 
@@ -49,6 +63,7 @@ export function PipelineTable() {
   const [owner, setOwner] = useState<"ALL" | string>("ALL");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [listFilter, setListFilter] = useState<PipelineListFilter>("all");
 
   const pipelines: PipelineRow[] = useMemo(
     () =>
@@ -71,20 +86,25 @@ export function PipelineTable() {
     [pipelines],
   );
 
+  const metrics = useMemo(() => computePipelineListMetrics(pipelines), [pipelines]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return pipelines.filter((p) => {
+    const statusFromList = pipelineListFilterToStatus(listFilter);
+    const effectiveStatus = status !== "ALL" ? status : statusFromList;
+
+    return filterPipelineList(pipelines, listFilter).filter((p) => {
       if (q && !`${p.code} ${p.businessName} ${p.name} ${p.ownerName}`.toLowerCase().includes(q)) {
         return false;
       }
       if (phase !== "ALL" && p.currentPhase !== phase) return false;
-      if (status !== "ALL" && p.status !== status) return false;
+      if (effectiveStatus !== "ALL" && p.status !== effectiveStatus) return false;
       if (owner !== "ALL" && p.ownerName !== owner) return false;
       if (fromDate && p.createdAt.slice(0, 10) < fromDate) return false;
       if (toDate && p.createdAt.slice(0, 10) > toDate) return false;
       return true;
     });
-  }, [pipelines, search, phase, status, owner, fromDate, toDate]);
+  }, [pipelines, search, phase, status, owner, fromDate, toDate, listFilter]);
 
   const columns: DataTableColumn<PipelineRow>[] = [
     {
@@ -131,6 +151,51 @@ export function PipelineTable() {
       skeleton={<TablePageSkeleton columns={6} />}
     >
     <div className="flex flex-col gap-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          icon={ActivityIcon}
+          label="Active"
+          value={metrics.active}
+          hint={metrics.activeHint ?? undefined}
+          onClick={() => {
+            setListFilter("active");
+            setStatus("ALL");
+          }}
+        />
+        <MetricCard
+          icon={WorkflowIcon}
+          label="In progress"
+          value={metrics.inProgress}
+          hint={metrics.inProgressHint ?? undefined}
+          onClick={() => {
+            setListFilter("in_progress");
+            setStatus("ALL");
+          }}
+        />
+        <MetricCard
+          icon={CheckCircle2Icon}
+          label="Completed"
+          value={metrics.completed}
+          hint={metrics.completed > 0 ? "Won opportunities" : "None yet"}
+          tone={metrics.completed > 0 ? "success" : "default"}
+          onClick={() => {
+            setListFilter("completed");
+            setStatus("ALL");
+          }}
+        />
+        <MetricCard
+          icon={PauseCircleIcon}
+          label="Deactivated"
+          value={metrics.deactivated}
+          hint={metrics.deactivated > 0 ? "Preserved history" : "None deactivated"}
+          tone={metrics.deactivated > 0 ? "warning" : "default"}
+          onClick={() => {
+            setListFilter("deactivated");
+            setStatus("ALL");
+          }}
+        />
+      </div>
+
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-52 flex-1">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -154,7 +219,13 @@ export function PipelineTable() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={status} onValueChange={(v) => setStatus(v as "ALL" | PipelineStatus)}>
+        <Select
+          value={status}
+          onValueChange={(v) => {
+            setStatus(v as "ALL" | PipelineStatus);
+            setListFilter("all");
+          }}
+        >
           <SelectTrigger className="w-36">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
