@@ -1,7 +1,6 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import {
   Dialog,
@@ -29,7 +28,6 @@ export function ContactFormDialog({
   lockPrimary?: boolean;
   trigger: ReactNode;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
 
   return (
@@ -51,7 +49,6 @@ export function ContactFormDialog({
           lockPrimary={lockPrimary}
           onSuccess={() => {
             setOpen(false);
-            router.refresh();
           }}
         />
       </DialogContent>

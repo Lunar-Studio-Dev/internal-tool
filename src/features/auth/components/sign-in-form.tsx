@@ -1,9 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { type FormEvent, useActionState, useState } from "react";
 import { Loader2Icon } from "lucide-react";
 
+import { FieldError, FieldLabel } from "@/components/common/form-field";
 import { signInAction, type AuthActionState } from "@/features/auth/actions";
+import { signInSchema } from "@/features/auth/schemas/auth.schema";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,12 +17,28 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { parseForm, type FieldErrors } from "@/lib/form";
 
 const initialState: AuthActionState = {};
 
 export function SignInForm() {
   const [state, formAction, isPending] = useActionState(signInAction, initialState);
+  const [errors, setErrors] = useState<FieldErrors>({});
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const parsed = parseForm(signInSchema, {
+      email: String(data.get("email") ?? ""),
+      password: String(data.get("password") ?? ""),
+    });
+    if (!parsed.ok) {
+      event.preventDefault();
+      setErrors(parsed.errors);
+      return;
+    }
+    setErrors({});
+  }
 
   return (
     <Card>
@@ -28,7 +46,7 @@ export function SignInForm() {
         <CardTitle className="text-xl">Sign in</CardTitle>
         <CardDescription>Welcome back. Enter your credentials to continue.</CardDescription>
       </CardHeader>
-      <form action={formAction}>
+      <form noValidate action={formAction} onSubmit={onSubmit}>
         <CardContent className="flex flex-col gap-4">
           {state.error ? (
             <Alert variant="destructive">
@@ -36,18 +54,30 @@ export function SignInForm() {
             </Alert>
           ) : null}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" autoComplete="email" required />
+            <FieldLabel htmlFor="email" required>
+              Email
+            </FieldLabel>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              maxLength={200}
+            />
+            <FieldError error={errors.email} />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="password">Password</Label>
+            <FieldLabel htmlFor="password" required>
+              Password
+            </FieldLabel>
             <Input
               id="password"
               name="password"
               type="password"
               autoComplete="current-password"
-              required
+              maxLength={200}
             />
+            <FieldError error={errors.password} />
           </div>
         </CardContent>
         <CardFooter className="mt-6 flex flex-col gap-3">

@@ -2,6 +2,7 @@ import "server-only";
 
 import { requirePermission } from "@/lib/auth/member";
 import { db } from "@/lib/db";
+import { businessNameMap, memberNameMap, pipelineCodeMap } from "@/lib/lookups";
 
 type TaskRecord = {
   assigneeId: string | null;
@@ -10,33 +11,13 @@ type TaskRecord = {
   pipelineId: string | null;
 };
 
-/** Batch-resolve the denormalized ids on a set of tasks (no FKs). */
 async function resolveLookups(tasks: TaskRecord[]) {
-  const memberIds = [
-    ...new Set(
-      tasks.flatMap((t) => [t.assigneeId, t.createdById]).filter((v): v is string => Boolean(v)),
-    ),
-  ];
-  const businessIds = [...new Set(tasks.map((t) => t.businessId).filter((v): v is string => Boolean(v)))];
-  const pipelineIds = [...new Set(tasks.map((t) => t.pipelineId).filter((v): v is string => Boolean(v)))];
-
-  const [members, businesses, pipelines] = await Promise.all([
-    memberIds.length
-      ? db.teamMember.findMany({ where: { id: { in: memberIds } }, select: { id: true, name: true } })
-      : [],
-    businessIds.length
-      ? db.business.findMany({ where: { id: { in: businessIds } }, select: { id: true, name: true } })
-      : [],
-    pipelineIds.length
-      ? db.pipeline.findMany({ where: { id: { in: pipelineIds } }, select: { id: true, code: true } })
-      : [],
+  const [member, business, pipeline] = await Promise.all([
+    memberNameMap(tasks.flatMap((t) => [t.assigneeId, t.createdById])),
+    businessNameMap(tasks.map((t) => t.businessId)),
+    pipelineCodeMap(tasks.map((t) => t.pipelineId)),
   ]);
-
-  return {
-    member: new Map(members.map((m) => [m.id, m.name])),
-    business: new Map(businesses.map((b) => [b.id, b.name])),
-    pipeline: new Map(pipelines.map((p) => [p.id, p.code])),
-  };
+  return { member, business, pipeline };
 }
 
 function decorate<T extends TaskRecord>(
@@ -102,3 +83,14 @@ export async function listTaskOptions() {
   };
 }
 export type TaskOptions = Awaited<ReturnType<typeof listTaskOptions>>;
+
+/** Tasks scoped to a business (detail tab). */
+export async function listTasksForBusiness(businessId: string) {
+  await requirePermission("task:read");
+  const tasks = await db.task.findMany({
+    where: { businessId },
+    orderBy: [{ status: "asc" }, { dueAt: "asc" }],
+  });
+  const maps = await resolveLookups(tasks);
+  return tasks.map((t) => decorate(t, maps));
+}

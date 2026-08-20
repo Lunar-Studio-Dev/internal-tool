@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { ChartColumnIcon, ShieldIcon } from "lucide-react";
+import { ChartColumnIcon } from "lucide-react";
 
 import { ComingSoon } from "@/components/common/coming-soon";
-import { EmptyState } from "@/components/common/empty-state";
+import { NotAuthorized } from "@/components/layout/not-authorized";
 import { PageHeader } from "@/components/common/page-header";
 import { currentMemberCan } from "@/lib/auth/member";
 
@@ -12,14 +12,10 @@ export const metadata: Metadata = { title: "Analytics" };
 export default async function AnalyticsPage() {
   if (!(await currentMemberCan("analytics:read"))) {
     return (
-      <>
-        <PageHeader title="Analytics" breadcrumbs={[{ label: "Analytics" }]} />
-        <EmptyState
-          icon={ShieldIcon}
-          title="Not authorized"
-          description="You don't have permission to view analytics."
-        />
-      </>
+      <NotAuthorized
+        title="Analytics"
+        description="You don't have permission to view analytics."
+      />
     );
   }
 

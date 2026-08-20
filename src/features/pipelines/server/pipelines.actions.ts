@@ -1,6 +1,4 @@
-"use server";
-
-import { revalidatePath } from "next/cache";
+import "server-only";
 
 import {
   createPipelineSchema,
@@ -17,14 +15,10 @@ import { PhaseStatus, PhaseType, PipelineStatus } from "@/generated/prisma/enums
 import { logActivity } from "@/lib/activity";
 import { requirePermission } from "@/lib/auth/member";
 import { db } from "@/lib/db";
+import { emptyToNull } from "@/lib/utils";
 
 export type ActionResult = { ok: true; warning?: string } | { ok: false; error: string };
 export type CreatePipelineResult = { ok: true; id: string } | { ok: false; error: string };
-
-function emptyToNull(value?: string | null): string | null {
-  const trimmed = (value ?? "").trim();
-  return trimmed.length ? trimmed : null;
-}
 
 function isUniqueViolation(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
@@ -92,9 +86,6 @@ export async function createPipelineAction(input: unknown): Promise<CreatePipeli
     pipelineId: created.id,
     metadata: { name },
   });
-
-  revalidatePath("/pipelines");
-  revalidatePath(`/businesses/${businessId}`);
   return { ok: true, id: created.id };
 }
 
@@ -112,9 +103,6 @@ export async function promotePipelineAction(input: unknown): Promise<ActionResul
       actorId: member.id,
       notes: parsed.data.notes || undefined,
     });
-    revalidatePath("/pipelines");
-    revalidatePath(`/pipelines/${parsed.data.pipelineId}`);
-    revalidatePath(`/businesses/${result.businessId}`);
     return { ok: true };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Could not promote the pipeline." };
@@ -136,9 +124,6 @@ export async function deactivatePipelineAction(input: unknown): Promise<ActionRe
       actorId: member.id,
       notes: parsed.data.notes || undefined,
     });
-    revalidatePath("/pipelines");
-    revalidatePath(`/pipelines/${parsed.data.pipelineId}`);
-    revalidatePath(`/businesses/${result.businessId}`);
     return { ok: true };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Could not deactivate the pipeline." };

@@ -1,13 +1,13 @@
 "use client";
 
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useState } from "react";
 import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import { FieldError, FieldLabel } from "@/components/common/form-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -16,7 +16,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { createFollowUpAction } from "@/features/followups/server/followups.actions";
+import { useCreateFollowUp } from "@/features/followups/api";
+import { createFollowUpSchema } from "@/features/followups/schemas/followup.schema";
+import { mutationErrorMessage } from "@/lib/api/errors";
+import { parseForm, type FieldErrors } from "@/lib/form";
 import type { PhaseType } from "@/generated/prisma/enums";
 
 const NONE = "NONE";
@@ -39,32 +42,38 @@ export function FollowUpForm({
   const [assigneeId, setAssigneeId] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const createFollowUp = useCreateFollowUp();
+  const isPending = createFollowUp.isPending;
 
-  function onSubmit(event: FormEvent) {
+  async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    startTransition(async () => {
-      const result = await createFollowUpAction({
-        businessId: businessId ?? "",
-        pipelineId: pipelineId ?? "",
-        phaseType: phaseType ?? "",
-        reason,
-        dueAt,
-        assigneeId,
-        notes,
-      });
-      if (result.ok) {
-        toast.success("Follow-up scheduled");
-        onSuccess?.();
-      } else {
-        setError(result.error);
-      }
+    const parsed = parseForm(createFollowUpSchema, {
+      businessId: businessId ?? "",
+      pipelineId: pipelineId ?? "",
+      phaseType: phaseType ?? "",
+      reason,
+      dueAt,
+      assigneeId,
+      notes,
     });
+    if (!parsed.ok) {
+      setErrors(parsed.errors);
+      return;
+    }
+    setErrors({});
+    try {
+      await createFollowUp.mutateAsync(parsed.data);
+      toast.success("Follow-up scheduled");
+      onSuccess?.();
+    } catch (error) {
+      setError(mutationErrorMessage(error));
+    }
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+    <form noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
       {error ? (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -72,29 +81,34 @@ export function FollowUpForm({
       ) : null}
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="fu-reason">Reason</Label>
+        <FieldLabel htmlFor="fu-reason" required>
+          Reason
+        </FieldLabel>
         <Input
           id="fu-reason"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="e.g. Client reviewing quotation"
-          required
+          maxLength={200}
         />
+        <FieldError error={errors.reason} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="fu-due">Due</Label>
+          <FieldLabel htmlFor="fu-due" required>
+            Due
+          </FieldLabel>
           <Input
             id="fu-due"
             type="datetime-local"
             value={dueAt}
             onChange={(e) => setDueAt(e.target.value)}
-            required
           />
+          <FieldError error={errors.dueAt} />
         </div>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="fu-assignee">Assigned to</Label>
+          <FieldLabel htmlFor="fu-assignee">Assigned to</FieldLabel>
           <Select
             value={assigneeId || NONE}
             onValueChange={(v) => setAssigneeId(v === NONE ? "" : v)}
@@ -111,12 +125,20 @@ export function FollowUpForm({
               ))}
             </SelectContent>
           </Select>
+          <FieldError error={errors.assigneeId} />
         </div>
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="fu-notes">Notes</Label>
-        <Textarea id="fu-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+        <FieldLabel htmlFor="fu-notes">Notes</FieldLabel>
+        <Textarea
+          id="fu-notes"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={3}
+          maxLength={1000}
+        />
+        <FieldError error={errors.notes} />
       </div>
 
       <div className="flex justify-end gap-2 pt-2">

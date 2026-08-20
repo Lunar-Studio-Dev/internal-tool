@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { ShieldIcon } from "lucide-react";
 
-import { EmptyState } from "@/components/common/empty-state";
+import { NotAuthorized } from "@/components/layout/not-authorized";
 import { PageHeader } from "@/components/common/page-header";
 import { RolesMatrix } from "@/features/team/components/roles-matrix";
 import { currentMemberCan } from "@/lib/auth/member";
@@ -12,14 +11,10 @@ export const metadata: Metadata = { title: "Roles & Permissions" };
 export default async function RolesPage() {
   if (!(await currentMemberCan("team:manage"))) {
     return (
-      <>
-        <PageHeader title="Roles & permissions" />
-        <EmptyState
-          icon={ShieldIcon}
-          title="Not authorized"
-          description="You need the Admin role to view this reference."
-        />
-      </>
+      <NotAuthorized
+        title="Roles & permissions"
+        description="You need the Admin role to view this reference."
+      />
     );
   }
 

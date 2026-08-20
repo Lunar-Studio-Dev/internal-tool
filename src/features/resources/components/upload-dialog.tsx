@@ -1,10 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { type ChangeEvent, type DragEvent, type ReactNode, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2Icon, UploadCloudIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { FieldError, FieldLabel } from "@/components/common/form-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +18,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { resourceQueries, useCreateResource } from "@/features/resources/api";
 import {
   ALLOWED_UPLOAD_MIME,
   MAX_UPLOAD_BYTES,
@@ -34,9 +35,14 @@ import {
   humanFileSize,
   inferResourceType,
 } from "@/features/resources/constants";
-import { createResourceAction } from "@/features/resources/server/resources.actions";
 import type { ResourceOptions } from "@/features/resources/server/resources.queries";
 import { PHASE_LABELS, PHASE_ORDER } from "@/features/pipelines/constants";
+import {
+  createResourceSchema,
+  resourceMetaSchema,
+} from "@/features/resources/schemas/resource.schema";
+import { mutationErrorMessage } from "@/lib/api/errors";
+import { parseForm, type FieldErrors } from "@/lib/form";
 import { PhaseType, ResourceType } from "@/generated/prisma/enums";
 
 const NONE = "NONE";
@@ -46,12 +52,14 @@ export function UploadDialog({
   prefill,
   trigger,
 }: {
-  options: ResourceOptions;
+  options?: ResourceOptions;
   prefill?: { businessId?: string | null; pipelineId?: string | null; phaseType?: PhaseType | null };
   trigger: ReactNode;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const optionsQuery = useQuery({ ...resourceQueries.options(), enabled: open && !options });
+  const resolved = options ?? optionsQuery.data;
+  const createResource = useCreateResource();
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState("");
   const [type, setType] = useState<ResourceType>(ResourceType.OTHER);
@@ -60,6 +68,7 @@ export function UploadDialog({
   const [phaseType, setPhaseType] = useState<"" | PhaseType>(prefill?.phaseType ?? "");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
   const [busy, setBusy] = useState(false);
 
   function pickFile(f: File | null) {
@@ -84,6 +93,20 @@ export function UploadDialog({
     if (!file) return setError("Choose a file to upload.");
     if (!ALLOWED_UPLOAD_MIME.includes(file.type)) return setError("Unsupported file type.");
     if (file.size > MAX_UPLOAD_BYTES) return setError("File too large (max 25MB).");
+
+    const meta = parseForm(resourceMetaSchema, {
+      name: name || file.name,
+      type,
+      businessId,
+      pipelineId,
+      phaseType,
+      description,
+    });
+    if (!meta.ok) {
+      setErrors(meta.errors);
+      return;
+    }
+    setErrors({});
 
     setBusy(true);
     try {
@@ -111,33 +134,39 @@ export function UploadDialog({
         body: file,
       });
       if (!put.ok) {
-        setError("Upload to storage failed.");
+        setError(
+          put.status === 0 || put.type === "opaque"
+            ? "Upload was blocked. Confirm the R2 bucket CORS allows this origin."
+            : "Upload to storage failed.",
+        );
         return;
       }
 
-      const result = await createResourceAction({
-        name: name || file.name,
-        type,
+      const saved = parseForm(createResourceSchema, {
+        ...meta.data,
         objectKey: key,
         sizeBytes: file.size,
         contentType: file.type,
-        businessId,
-        pipelineId,
-        phaseType,
-        description,
       });
-      if (result.ok) {
-        toast.success("Resource uploaded");
-        setOpen(false);
-        setFile(null);
-        setName("");
-        setDescription("");
-        router.refresh();
-      } else {
-        setError(result.error);
+      if (!saved.ok) {
+        setErrors(saved.errors);
+        setError(saved.message);
+        return;
       }
+
+      await createResource.mutateAsync(saved.data);
+      toast.success("Resource uploaded");
+      setOpen(false);
+      setFile(null);
+      setName("");
+      setDescription("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed.");
+      const message = e instanceof Error ? e.message : "Upload failed.";
+      setError(
+        /failed to fetch|networkerror|cors/i.test(message)
+          ? "Upload was blocked by the browser (usually R2 CORS). Confirm the bucket allows PUT from this origin."
+          : mutationErrorMessage(e, message),
+      );
     } finally {
       setBusy(false);
     }
@@ -172,17 +201,27 @@ export function UploadDialog({
             ) : (
               <span>Drag &amp; drop or click to choose a file</span>
             )}
-            <input type="file" className="hidden" onChange={onFileInput} />
+            <input
+              type="file"
+              className="hidden"
+              accept={ALLOWED_UPLOAD_MIME.join(",")}
+              onChange={onFileInput}
+            />
           </label>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="r-name">Name</Label>
-            <Input id="r-name" value={name} onChange={(e) => setName(e.target.value)} />
+            <FieldLabel htmlFor="r-name" required>
+              Name
+            </FieldLabel>
+            <Input id="r-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
+            <FieldError error={errors.name} />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="r-type">Type</Label>
+              <FieldLabel htmlFor="r-type" required>
+                Type
+              </FieldLabel>
               <Select value={type} onValueChange={(v) => setType(v as ResourceType)}>
                 <SelectTrigger id="r-type">
                   <SelectValue />
@@ -195,9 +234,10 @@ export function UploadDialog({
                   ))}
                 </SelectContent>
               </Select>
+              <FieldError error={errors.type} />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="r-phase">Phase</Label>
+              <FieldLabel htmlFor="r-phase">Phase</FieldLabel>
               <Select
                 value={phaseType || NONE}
                 onValueChange={(v) => setPhaseType(v === NONE ? "" : (v as PhaseType))}
@@ -214,12 +254,13 @@ export function UploadDialog({
                   ))}
                 </SelectContent>
               </Select>
+              <FieldError error={errors.phaseType} />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="r-business">Business</Label>
+              <FieldLabel htmlFor="r-business">Business</FieldLabel>
               <Select
                 value={businessId || NONE}
                 onValueChange={(v) => setBusinessId(v === NONE ? "" : v)}
@@ -229,16 +270,17 @@ export function UploadDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>None</SelectItem>
-                  {options.businesses.map((b) => (
+                  {resolved?.businesses.map((b) => (
                     <SelectItem key={b.id} value={b.id}>
                       {b.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <FieldError error={errors.businessId} />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="r-pipeline">Pipeline</Label>
+              <FieldLabel htmlFor="r-pipeline">Pipeline</FieldLabel>
               <Select
                 value={pipelineId || NONE}
                 onValueChange={(v) => setPipelineId(v === NONE ? "" : v)}
@@ -248,24 +290,27 @@ export function UploadDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>None</SelectItem>
-                  {options.pipelines.map((p) => (
+                  {resolved?.pipelines.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <FieldError error={errors.pipelineId} />
             </div>
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="r-desc">Description</Label>
+            <FieldLabel htmlFor="r-desc">Description</FieldLabel>
             <Textarea
               id="r-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
+              maxLength={1000}
             />
+            <FieldError error={errors.description} />
           </div>
         </div>
 

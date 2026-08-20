@@ -59,3 +59,23 @@ export function humanFileSize(bytes?: number | null): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+export type ResourcePreviewKind = "image" | "pdf" | "text" | "unsupported";
+
+/** Same-origin file stream used for in-app preview and download. */
+export function resourceFilePath(id: string, download = false): string {
+  return download ? `/api/resources/${id}/file?download=1` : `/api/resources/${id}/file`;
+}
+
+/** How the preview modal should render this file (semantic ResourceType is ignored). */
+export function previewKind(
+  contentType: string | null | undefined,
+  filename: string,
+): ResourcePreviewKind {
+  const ct = (contentType ?? "").toLowerCase();
+  const ext = filename.toLowerCase().split(".").pop() ?? "";
+  if (ct.startsWith("image/") || ["png", "jpg", "jpeg", "gif", "webp"].includes(ext)) return "image";
+  if (ct === "application/pdf" || ext === "pdf") return "pdf";
+  if (ct.startsWith("text/") || ["txt", "md", "csv"].includes(ext)) return "text";
+  return "unsupported";
+}

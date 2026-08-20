@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { PlusIcon, SearchIcon } from "lucide-react";
 
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
+import { QueryGate } from "@/components/common/query-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,6 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { businessQueries } from "@/features/businesses/api";
+import { BusinessCreateDialog } from "@/features/businesses/components/business-create-dialog";
+import { useCan } from "@/features/team/hooks/use-current-member";
 
 export type BusinessRow = {
   id: string;
@@ -25,9 +30,25 @@ export type BusinessRow = {
   activePipelineCount: number;
 };
 
-export function BusinessTable({ businesses }: { businesses: BusinessRow[] }) {
+export function BusinessTable() {
+  const query = useQuery(businessQueries.list());
+  const canWrite = useCan("business:write");
   const [search, setSearch] = useState("");
   const [industry, setIndustry] = useState<"ALL" | string>("ALL");
+
+  const businesses: BusinessRow[] = useMemo(
+    () =>
+      (query.data ?? []).map((b) => ({
+        id: b.id,
+        name: b.name,
+        website: b.website ?? "",
+        industry: b.industry ?? "",
+        primaryContact: b.contacts[0]?.name ?? "",
+        pipelineCount: b.pipelines.length,
+        activePipelineCount: b.pipelines.filter((p) => p.status === "ACTIVE").length,
+      })),
+    [query.data],
+  );
 
   const industries = useMemo(
     () => [...new Set(businesses.map((b) => b.industry).filter(Boolean))].sort(),
@@ -99,6 +120,7 @@ export function BusinessTable({ businesses }: { businesses: BusinessRow[] }) {
   ];
 
   return (
+    <QueryGate isPending={query.isPending} isError={query.isError} error={query.error}>
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-52 flex-1">
@@ -123,12 +145,16 @@ export function BusinessTable({ businesses }: { businesses: BusinessRow[] }) {
             ))}
           </SelectContent>
         </Select>
-        <Button asChild>
-          <Link href="/businesses/new">
-            <PlusIcon className="size-4" />
-            New Business
-          </Link>
-        </Button>
+        {canWrite ? (
+          <BusinessCreateDialog
+            trigger={
+              <Button>
+                <PlusIcon className="size-4" />
+                New Business
+              </Button>
+            }
+          />
+        ) : null}
       </div>
       <DataTable
         columns={columns}
@@ -137,5 +163,6 @@ export function BusinessTable({ businesses }: { businesses: BusinessRow[] }) {
         empty="No businesses match your filters."
       />
     </div>
+    </QueryGate>
   );
 }

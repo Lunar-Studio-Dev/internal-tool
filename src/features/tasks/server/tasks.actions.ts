@@ -1,6 +1,4 @@
-"use server";
-
-import { revalidatePath } from "next/cache";
+import "server-only";
 
 import {
   createTaskSchema,
@@ -11,26 +9,16 @@ import { TaskStatus } from "@/generated/prisma/enums";
 import { logActivity } from "@/lib/activity";
 import { requirePermission } from "@/lib/auth/member";
 import { db } from "@/lib/db";
+import { emptyToNull } from "@/lib/utils";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 export type CreateTaskResult = { ok: true; id: string } | { ok: false; error: string };
 
-function emptyToNull(value?: string | null): string | null {
-  const trimmed = (value ?? "").trim();
-  return trimmed.length ? trimmed : null;
-}
-
-function parseDue(value?: string | null): Date | null {
+function parseDue(value?: string | null): Date | null | "invalid" {
   const trimmed = (value ?? "").trim();
   if (!trimmed) return null;
   const date = new Date(trimmed);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function revalidateTaskContexts(task: { businessId: string | null; pipelineId: string | null }) {
-  revalidatePath("/todos");
-  if (task.businessId) revalidatePath(`/businesses/${task.businessId}`);
-  if (task.pipelineId) revalidatePath(`/pipelines/${task.pipelineId}`);
+  return Number.isNaN(date.getTime()) ? "invalid" : date;
 }
 
 export async function createTaskAction(input: unknown): Promise<CreateTaskResult> {
@@ -41,6 +29,8 @@ export async function createTaskAction(input: unknown): Promise<CreateTaskResult
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   const d = parsed.data;
+  const dueAt = parseDue(d.dueAt);
+  if (dueAt === "invalid") return { ok: false, error: "Pick a valid date and time." };
 
   try {
     const task = await db.task.create({
@@ -48,7 +38,7 @@ export async function createTaskAction(input: unknown): Promise<CreateTaskResult
         title: d.title,
         assigneeId: emptyToNull(d.assigneeId),
         createdById: member.id,
-        dueAt: parseDue(d.dueAt),
+        dueAt,
         priority: d.priority,
         businessId: emptyToNull(d.businessId),
         pipelineId: emptyToNull(d.pipelineId),
@@ -65,7 +55,6 @@ export async function createTaskAction(input: unknown): Promise<CreateTaskResult
       pipelineId: task.pipelineId,
       metadata: { title: task.title },
     });
-    revalidateTaskContexts(task);
     return { ok: true, id: task.id };
   } catch {
     return { ok: false, error: "Could not create the task." };
@@ -80,6 +69,8 @@ export async function updateTaskAction(input: unknown): Promise<ActionResult> {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   const d = parsed.data;
+  const dueAt = parseDue(d.dueAt);
+  if (dueAt === "invalid") return { ok: false, error: "Pick a valid date and time." };
 
   try {
     const task = await db.task.update({
@@ -87,7 +78,7 @@ export async function updateTaskAction(input: unknown): Promise<ActionResult> {
       data: {
         title: d.title,
         assigneeId: emptyToNull(d.assigneeId),
-        dueAt: parseDue(d.dueAt),
+        dueAt,
         priority: d.priority,
         status: d.status,
         businessId: emptyToNull(d.businessId),
@@ -105,8 +96,6 @@ export async function updateTaskAction(input: unknown): Promise<ActionResult> {
       pipelineId: task.pipelineId,
       metadata: { title: task.title },
     });
-    revalidateTaskContexts(task);
-    revalidatePath(`/todos/${d.id}`);
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not update the task." };
@@ -132,8 +121,6 @@ async function transitionStatus(
     pipelineId: task.pipelineId,
     metadata: { title: task.title },
   });
-  revalidateTaskContexts(task);
-  revalidatePath(`/todos/${id}`);
   return { ok: true };
 }
 
@@ -169,7 +156,5 @@ export async function reassignTaskAction(input: unknown): Promise<ActionResult> 
     pipelineId: task.pipelineId,
     metadata: { title: task.title },
   });
-  revalidateTaskContexts(task);
-  revalidatePath(`/todos/${parsed.data.id}`);
   return { ok: true };
 }

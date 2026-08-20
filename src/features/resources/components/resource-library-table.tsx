@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
-import { DownloadIcon, Loader2Icon, SearchIcon, Trash2Icon } from "lucide-react";
+import { useMemo, useState } from "react";
+import { EyeIcon, Loader2Icon, SearchIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
@@ -29,17 +28,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RESOURCE_TYPE_LABELS, RESOURCE_TYPE_ORDER, humanFileSize } from "@/features/resources/constants";
-import {
-  deleteResourceAction,
-  getResourceDownloadUrlAction,
-} from "@/features/resources/server/resources.actions";
+import { useDeleteResource } from "@/features/resources/api";
+import { ResourcePreviewDialog } from "@/features/resources/components/resource-preview-dialog";
 import { PHASE_LABELS } from "@/features/pipelines/constants";
+import { mutationErrorMessage } from "@/lib/api/errors";
 import type { PhaseType, ResourceType } from "@/generated/prisma/enums";
 
 export type ResourceRow = {
   id: string;
   name: string;
   type: ResourceType;
+  contentType?: string | null;
   sizeBytes: number | null;
   businessId: string | null;
   businessName: string | null;
@@ -48,38 +47,46 @@ export type ResourceRow = {
   phaseType: PhaseType | null;
 };
 
-function ResourceRowActions({ resource, canWrite }: { resource: ResourceRow; canWrite: boolean }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+function ResourceRowActions({
+  resource,
+  canWrite,
+  onOpen,
+}: {
+  resource: ResourceRow;
+  canWrite: boolean;
+  onOpen: () => void;
+}) {
+  const deleteResource = useDeleteResource();
 
-  function download() {
-    startTransition(async () => {
-      const result = await getResourceDownloadUrlAction(resource.id);
-      if (result.ok) window.open(result.url, "_blank", "noopener,noreferrer");
-      else toast.error(result.error);
-    });
-  }
-
-  function remove() {
-    startTransition(async () => {
-      const result = await deleteResourceAction(resource.id);
-      if (result.ok) toast.success("Resource deleted");
-      else toast.error(result.error);
-      router.refresh();
-    });
+  async function remove() {
+    try {
+      await deleteResource.mutateAsync(resource.id);
+      toast.success("Resource deleted");
+    } catch (error) {
+      toast.error(mutationErrorMessage(error));
+    }
   }
 
   return (
     <div className="flex items-center justify-end gap-1">
-      <Button variant="ghost" size="sm" disabled={isPending} onClick={download}>
-        {isPending ? <Loader2Icon className="size-4 animate-spin" /> : <DownloadIcon className="size-4" />}
+      <Button variant="ghost" size="sm" onClick={onOpen}>
+        <EyeIcon className="size-4" />
         Open
       </Button>
       {canWrite ? (
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label={`Delete ${resource.name}`} disabled={isPending}>
-              <Trash2Icon className="size-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Delete ${resource.name}`}
+              disabled={deleteResource.isPending}
+            >
+              {deleteResource.isPending ? (
+                <Loader2Icon className="size-4 animate-spin" />
+              ) : (
+                <Trash2Icon className="size-4" />
+              )}
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
@@ -111,6 +118,7 @@ export function ResourceLibraryTable({
   const [search, setSearch] = useState("");
   const [business, setBusiness] = useState<"ALL" | string>("ALL");
   const [type, setType] = useState<"ALL" | ResourceType>("ALL");
+  const [preview, setPreview] = useState<ResourceRow | null>(null);
 
   const businesses = useMemo(
     () =>
@@ -169,9 +177,11 @@ export function ResourceLibraryTable({
     {
       id: "actions",
       header: "",
-      headerClassName: "w-28",
-      className: "w-28 text-right",
-      cell: (r) => <ResourceRowActions resource={r} canWrite={canWrite} />,
+      headerClassName: "w-32",
+      className: "w-32 text-right",
+      cell: (r) => (
+        <ResourceRowActions resource={r} canWrite={canWrite} onOpen={() => setPreview(r)} />
+      ),
     },
   ];
 
@@ -219,6 +229,13 @@ export function ResourceLibraryTable({
         data={filtered}
         getRowKey={(r) => r.id}
         empty="No resources match your filters."
+      />
+      <ResourcePreviewDialog
+        resource={preview}
+        open={preview !== null}
+        onOpenChange={(next) => {
+          if (!next) setPreview(null);
+        }}
       />
     </div>
   );

@@ -2,17 +2,7 @@ import "server-only";
 
 import { requirePermission } from "@/lib/auth/member";
 import { db } from "@/lib/db";
-
-/** Resolve TeamMember ids → names (ownerId etc. are denormalized, no FK). */
-async function memberNameMap(ids: (string | null)[]): Promise<Map<string, string>> {
-  const unique = [...new Set(ids.filter((v): v is string => Boolean(v)))];
-  if (unique.length === 0) return new Map();
-  const members = await db.teamMember.findMany({
-    where: { id: { in: unique } },
-    select: { id: true, name: true },
-  });
-  return new Map(members.map((m) => [m.id, m.name]));
-}
+import { memberNameMap } from "@/lib/lookups";
 
 export async function listPipelines() {
   await requirePermission("pipeline:read");
@@ -85,6 +75,14 @@ export async function listBusinessOptions() {
     select: { id: true, name: true, website: true },
     orderBy: { name: "asc" },
   });
+}
+
+export async function listPipelineCreateOptions() {
+  const [businesses, assignees] = await Promise.all([
+    listBusinessOptions(),
+    listActiveMembersForAssignee(),
+  ]);
+  return { businesses, assignees };
 }
 
 export type PipelineActivityItem = {

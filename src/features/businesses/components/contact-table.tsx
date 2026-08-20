@@ -1,18 +1,17 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
 import { PencilIcon, PlusIcon, StarIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useSetPrimaryContact } from "@/features/businesses/api";
 import {
   ContactFormDialog,
 } from "@/features/businesses/components/contact-form-dialog";
 import { CONTACT_ROLE_LABELS } from "@/features/businesses/constants";
-import { setPrimaryContactAction } from "@/features/businesses/server/businesses.actions";
+import { mutationErrorMessage } from "@/lib/api/errors";
 import type { ContactRole } from "@/generated/prisma/enums";
 
 export type ContactRow = {
@@ -26,22 +25,21 @@ export type ContactRow = {
 };
 
 function ContactRowActions({ businessId, contact }: { businessId: string; contact: ContactRow }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const setPrimary = useSetPrimaryContact();
 
-  function makePrimary() {
-    startTransition(async () => {
-      const result = await setPrimaryContactAction(contact.id);
-      if (result.ok) toast.success("Primary contact updated");
-      else toast.error(result.error);
-      router.refresh();
-    });
+  async function makePrimary() {
+    try {
+      await setPrimary.mutateAsync(contact.id);
+      toast.success("Primary contact updated");
+    } catch (error) {
+      toast.error(mutationErrorMessage(error));
+    }
   }
 
   return (
     <div className="flex items-center justify-end gap-1">
       {!contact.isPrimary ? (
-        <Button variant="ghost" size="sm" disabled={isPending} onClick={makePrimary}>
+        <Button variant="ghost" size="sm" disabled={setPrimary.isPending} onClick={makePrimary}>
           <StarIcon className="size-4" />
           Set primary
         </Button>

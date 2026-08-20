@@ -2,6 +2,7 @@ import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import type { DuplicateCandidate } from "@/features/businesses/types";
 
 /** Strip scheme/www and path, lowercase — "https://www.ABC.com/x" → "abc.com". */
 export function normalizeHost(website?: string | null): string | null {
@@ -19,17 +20,6 @@ export function normalizePhone(phone?: string | null): string | null {
   const digits = (phone ?? "").replace(/\D/g, "");
   return digits.length >= 7 ? digits : null;
 }
-
-export type DuplicateCandidate = {
-  id: string;
-  name: string;
-  website: string | null;
-  email: string | null;
-  primaryContactName: string | null;
-  primaryContactEmail: string | null;
-  pipelineCount: number;
-  activePipelineCount: number;
-};
 
 export type DuplicateQuery = {
   name: string;

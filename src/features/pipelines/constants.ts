@@ -14,6 +14,11 @@ export const PHASE_ORDER: PhaseType[] = [
   PhaseType.PROJECT_MANAGEMENT,
 ];
 
+/** Operational pipeline phases. CONTACT_INFO is business-level, not stepped. */
+export const WORKABLE_PHASES: PhaseType[] = PHASE_ORDER.filter(
+  (phase) => phase !== PhaseType.CONTACT_INFO,
+);
+
 export const PHASE_LABELS: Record<PhaseType, string> = {
   CONTACT_INFO: "Contact Info",
   DISCOVERY: "Discovery",

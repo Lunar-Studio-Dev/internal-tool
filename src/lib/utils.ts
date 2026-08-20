@@ -5,6 +5,15 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Trim empty strings to null for optional DB columns. */
+export function emptyToNull(value?: string | null): string | null {
+  const trimmed = (value ?? "").trim();
+  return trimmed.length ? trimmed : null;
+}
+
+/** Sentinel for shadcn Select when the real value is empty. */
+export const NONE_SELECT_VALUE = "NONE";
+
 /** Format integer minor units (paise) as a currency string. Money is stored as paise. */
 export function formatMoney(minorUnits: number, currency = "INR", locale = "en-IN") {
   return new Intl.NumberFormat(locale, {

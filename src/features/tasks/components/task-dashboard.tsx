@@ -1,17 +1,19 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/common/empty-state";
+import { QueryGate } from "@/components/common/query-gate";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { taskQueries, useCompleteTask } from "@/features/tasks/api";
 import { TaskFormDialog } from "@/features/tasks/components/task-form-dialog";
 import {
   type TaskBucket,
@@ -19,9 +21,8 @@ import {
   TASK_BUCKET_ORDER,
   bucketOfTask,
 } from "@/features/tasks/constants";
-import { completeTaskAction } from "@/features/tasks/server/tasks.actions";
-import type { TaskOptions } from "@/features/tasks/server/tasks.queries";
 import { useCurrentMember } from "@/features/team/hooks/use-current-member";
+import { mutationErrorMessage } from "@/lib/api/errors";
 import type { Priority, TaskStatus } from "@/generated/prisma/enums";
 
 export type TaskRow = {
@@ -48,25 +49,24 @@ const TAB_TO_BUCKETS: Partial<Record<TabKey, TaskBucket[]>> = {
 };
 
 function TaskRowItem({ task }: { task: TaskRow }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const completeTask = useCompleteTask();
   const done = task.status === "COMPLETED" || task.status === "CANCELLED";
 
-  function complete(checked: boolean) {
+  async function complete(checked: boolean) {
     if (!checked || done) return;
-    startTransition(async () => {
-      const result = await completeTaskAction(task.id);
-      if (result.ok) toast.success("Task completed");
-      else toast.error(result.error);
-      router.refresh();
-    });
+    try {
+      await completeTask.mutateAsync(task.id);
+      toast.success("Task completed");
+    } catch (error) {
+      toast.error(mutationErrorMessage(error));
+    }
   }
 
   const context = [task.businessName, task.pipelineCode].filter(Boolean).join(" · ");
 
   return (
     <div className="flex items-center gap-3 py-2.5">
-      <Checkbox checked={done} disabled={isPending || done} onCheckedChange={(c) => complete(c === true)} />
+      <Checkbox checked={done} disabled={completeTask.isPending || done} onCheckedChange={(c) => complete(c === true)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Link
           href={`/todos/${task.id}`}
@@ -123,9 +123,28 @@ function GroupedList({ tasks, buckets }: { tasks: TaskRow[]; buckets: TaskBucket
   );
 }
 
-export function TaskDashboard({ tasks, options }: { tasks: TaskRow[]; options: TaskOptions }) {
+export function TaskDashboard() {
   const member = useCurrentMember();
   const [tab, setTab] = useState<TabKey>("MY");
+  const tasksQuery = useQuery(taskQueries.list());
+  const optionsQuery = useQuery(taskQueries.options());
+  const tasks: TaskRow[] = useMemo(
+    () =>
+      (tasksQuery.data ?? []).map((t) => ({
+        id: t.id,
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        dueAt: t.dueAt,
+        assigneeId: t.assigneeId,
+        assigneeName: t.assigneeName,
+        businessId: t.businessId,
+        businessName: t.businessName,
+        pipelineId: t.pipelineId,
+        pipelineCode: t.pipelineCode,
+      })),
+    [tasksQuery.data],
+  );
 
   const scoped = useMemo(() => {
     if (tab === "MY") return tasks.filter((t) => t.assigneeId === member.id);
@@ -135,6 +154,11 @@ export function TaskDashboard({ tasks, options }: { tasks: TaskRow[]; options: T
   const buckets = TAB_TO_BUCKETS[tab] ?? TASK_BUCKET_ORDER;
 
   return (
+    <QueryGate
+      isPending={tasksQuery.isPending || optionsQuery.isPending}
+      isError={tasksQuery.isError || optionsQuery.isError}
+      error={tasksQuery.error ?? optionsQuery.error}
+    >
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-2">
         <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
@@ -149,7 +173,7 @@ export function TaskDashboard({ tasks, options }: { tasks: TaskRow[]; options: T
         </Tabs>
         <TaskFormDialog
           mode="create"
-          options={options}
+          options={optionsQuery.data}
           trigger={
             <Button>
               <PlusIcon className="size-4" />
@@ -161,5 +185,6 @@ export function TaskDashboard({ tasks, options }: { tasks: TaskRow[]; options: T
 
       <GroupedList tasks={scoped} buckets={buckets} />
     </div>
+    </QueryGate>
   );
 }

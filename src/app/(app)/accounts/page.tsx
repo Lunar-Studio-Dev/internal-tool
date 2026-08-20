@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { ShieldIcon, WalletIcon } from "lucide-react";
+import { WalletIcon } from "lucide-react";
 
 import { ComingSoon } from "@/components/common/coming-soon";
-import { EmptyState } from "@/components/common/empty-state";
+import { NotAuthorized } from "@/components/layout/not-authorized";
 import { PageHeader } from "@/components/common/page-header";
 import { currentMemberCan } from "@/lib/auth/member";
 
@@ -12,14 +12,10 @@ export const metadata: Metadata = { title: "Accounts" };
 export default async function AccountsPage() {
   if (!(await currentMemberCan("accounts:read"))) {
     return (
-      <>
-        <PageHeader title="Accounts" breadcrumbs={[{ label: "Accounts" }]} />
-        <EmptyState
-          icon={ShieldIcon}
-          title="Not authorized"
-          description="You don't have permission to view accounts."
-        />
-      </>
+      <NotAuthorized
+        title="Accounts"
+        description="You don't have permission to view accounts."
+      />
     );
   }
 

@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { PlusIcon, SearchIcon } from "lucide-react";
 
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
+import { QueryGate } from "@/components/common/query-gate";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,12 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { teamQueries } from "@/features/team/api";
 import { MemberFormDialog } from "@/features/team/components/member-form-dialog";
 import { MemberRowActions } from "@/features/team/components/member-row-actions";
 import { ROLE_LABELS, ROLE_ORDER } from "@/features/team/constants";
 import { MemberStatus, type RoleName } from "@/generated/prisma/enums";
 
-export type TeamMemberRow = {
+type TeamMemberRow = {
   id: string;
   name: string;
   email: string;
@@ -30,10 +33,24 @@ export type TeamMemberRow = {
   roleNames: RoleName[];
 };
 
-export function MembersView({ members }: { members: TeamMemberRow[] }) {
+export function MembersView() {
+  const query = useQuery(teamQueries.list());
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"ALL" | RoleName>("ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | MemberStatus>("ALL");
+
+  const members: TeamMemberRow[] = useMemo(
+    () =>
+      (query.data ?? []).map((m) => ({
+        id: m.id,
+        name: m.name,
+        email: m.email,
+        phone: m.phone ?? "",
+        status: m.status,
+        roleNames: m.roles,
+      })),
+    [query.data],
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -87,6 +104,7 @@ export function MembersView({ members }: { members: TeamMemberRow[] }) {
   ];
 
   return (
+    <QueryGate isPending={query.isPending} isError={query.isError} error={query.error}>
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-52 flex-1">
@@ -142,5 +160,6 @@ export function MembersView({ members }: { members: TeamMemberRow[] }) {
         empty="No members match your filters."
       />
     </div>
+    </QueryGate>
   );
 }

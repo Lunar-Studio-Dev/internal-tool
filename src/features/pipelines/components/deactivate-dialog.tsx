@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { type ReactNode, useState, useTransition } from "react";
+import { type ReactNode, useState } from "react";
 import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import { FieldError, FieldLabel } from "@/components/common/form-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +16,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -25,7 +24,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { deactivatePipelineAction } from "@/features/pipelines/server/pipelines.actions";
+import { useDeactivatePipeline } from "@/features/pipelines/api";
+import { deactivatePipelineSchema } from "@/features/pipelines/schemas/pipeline.schema";
+import { mutationErrorMessage } from "@/lib/api/errors";
+import { parseForm, type FieldErrors } from "@/lib/form";
 
 export type DeactivationReasonOption = { id: string; label: string };
 
@@ -38,29 +40,29 @@ export function DeactivateDialog({
   reasons: DeactivationReasonOption[];
   trigger: ReactNode;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [reasonId, setReasonId] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const deactivate = useDeactivatePipeline();
+  const isPending = deactivate.isPending;
 
-  function onSubmit() {
+  async function onSubmit() {
     setError(null);
-    if (!reasonId) {
-      setError("Select a reason.");
+    const parsed = parseForm(deactivatePipelineSchema, { pipelineId, reasonId, notes });
+    if (!parsed.ok) {
+      setErrors(parsed.errors);
       return;
     }
-    startTransition(async () => {
-      const result = await deactivatePipelineAction({ pipelineId, reasonId, notes });
-      if (result.ok) {
-        toast.success("Pipeline deactivated");
-        setOpen(false);
-        router.refresh();
-      } else {
-        setError(result.error);
-      }
-    });
+    setErrors({});
+    try {
+      await deactivate.mutateAsync(parsed.data);
+      toast.success("Pipeline deactivated");
+      setOpen(false);
+    } catch (err) {
+      setError(mutationErrorMessage(err));
+    }
   }
 
   return (
@@ -81,7 +83,9 @@ export function DeactivateDialog({
             </Alert>
           ) : null}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="deact-reason">Reason</Label>
+            <FieldLabel htmlFor="deact-reason" required>
+              Reason
+            </FieldLabel>
             <Select value={reasonId} onValueChange={setReasonId}>
               <SelectTrigger id="deact-reason">
                 <SelectValue placeholder="Select a reason" />
@@ -94,15 +98,18 @@ export function DeactivateDialog({
                 ))}
               </SelectContent>
             </Select>
+            <FieldError error={errors.reasonId} />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="deact-notes">Notes (optional)</Label>
+            <FieldLabel htmlFor="deact-notes">Notes</FieldLabel>
             <Textarea
               id="deact-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
+              maxLength={1000}
             />
+            <FieldError error={errors.notes} />
           </div>
         </div>
 

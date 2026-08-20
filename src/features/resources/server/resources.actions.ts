@@ -1,26 +1,17 @@
-"use server";
-
-import { revalidatePath } from "next/cache";
+import "server-only";
 
 import { createResourceSchema } from "@/features/resources/schemas/resource.schema";
 import { logActivity } from "@/lib/activity";
 import { requirePermission } from "@/lib/auth/member";
 import { db } from "@/lib/db";
-import { deleteObject, presignDownload, publicUrl } from "@/lib/r2";
+import { emptyToNull } from "@/lib/utils";
+import { deleteObject, isR2Configured, presignDownload, publicUrl } from "@/lib/r2";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 export type DownloadResult = { ok: true; url: string } | { ok: false; error: string };
-
-function emptyToNull(value?: string | null): string | null {
-  const trimmed = (value ?? "").trim();
-  return trimmed.length ? trimmed : null;
-}
-
-function revalidateContexts(resource: { businessId: string | null; pipelineId: string | null }) {
-  revalidatePath("/resources");
-  if (resource.businessId) revalidatePath(`/businesses/${resource.businessId}`);
-  if (resource.pipelineId) revalidatePath(`/pipelines/${resource.pipelineId}`);
-}
+export type ResourceFileMetaResult =
+  | { ok: true; name: string; objectKey: string; contentType: string | null }
+  | { ok: false; error: string; status: 404 | 503 };
 
 export async function createResourceAction(input: unknown): Promise<ActionResult> {
   const member = await requirePermission("resource:write");
@@ -55,7 +46,6 @@ export async function createResourceAction(input: unknown): Promise<ActionResult
       pipelineId: resource.pipelineId,
       metadata: { name: resource.name, type: resource.type },
     });
-    revalidateContexts(resource);
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not save the resource." };
@@ -85,7 +75,6 @@ export async function deleteResourceAction(id: string): Promise<ActionResult> {
     pipelineId: resource.pipelineId,
     metadata: { name: resource.name },
   });
-  revalidateContexts(resource);
   return { ok: true };
 }
 
@@ -99,4 +88,17 @@ export async function getResourceDownloadUrlAction(id: string): Promise<Download
   const url = publicUrl(resource.objectKey) ?? (await presignDownload(resource.objectKey));
   if (!url) return { ok: false, error: "File storage is not configured." };
   return { ok: true, url };
+}
+
+/** Auth + metadata for streaming the stored file through the app. */
+export async function getResourceFileMetaAction(id: string): Promise<ResourceFileMetaResult> {
+  await requirePermission("resource:read");
+
+  const resource = await db.resource.findUnique({
+    where: { id },
+    select: { name: true, objectKey: true, contentType: true },
+  });
+  if (!resource) return { ok: false, error: "Resource not found.", status: 404 };
+  if (!isR2Configured()) return { ok: false, error: "File storage is not configured.", status: 503 };
+  return { ok: true, ...resource };
 }

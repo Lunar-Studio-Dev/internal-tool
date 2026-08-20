@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { Logo } from "@/components/brand/logo";
 import { NAV_ITEMS } from "@/components/layout/nav";
 import { UserMenu } from "@/components/layout/user-menu";
 import {
@@ -19,7 +20,6 @@ import {
 } from "@/components/ui/sidebar";
 import { useCurrentMember } from "@/features/team/hooks/use-current-member";
 import { can } from "@/lib/rbac";
-import Image from "next/image";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -38,8 +38,8 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-transparent border text-primary-foreground">
-                  <Image src={"/logo.png"} width={16} height={16} alt="Lunar Studio Logo" />
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-foreground text-background">
+                  <Logo className="size-5" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Lunar Studio</span>

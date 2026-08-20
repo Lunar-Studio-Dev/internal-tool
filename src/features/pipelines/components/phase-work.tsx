@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
 import { StatusBadge } from "@/components/common/status-badge";
@@ -7,15 +10,19 @@ import { Button } from "@/components/ui/button";
 import { FollowUpFormDialog } from "@/features/followups/components/followup-form-dialog";
 import { FollowUpList, type FollowUpRow } from "@/features/followups/components/followup-list";
 import { RESOURCE_TYPE_LABELS } from "@/features/resources/constants";
+import { ResourcePreviewDialog } from "@/features/resources/components/resource-preview-dialog";
 import { UploadDialog } from "@/features/resources/components/upload-dialog";
-import type { ResourceOptions } from "@/features/resources/server/resources.queries";
 import { TaskFormDialog } from "@/features/tasks/components/task-form-dialog";
 import type { TaskFormInitial } from "@/features/tasks/components/task-form";
-import type { TaskOptions } from "@/features/tasks/server/tasks.queries";
 import { PhaseType, Priority, type ResourceType, type TaskStatus } from "@/generated/prisma/enums";
 
-export type PhaseWorkTask = { id: string; title: string; status: TaskStatus; dueAt: Date | null };
-export type PhaseWorkResource = { id: string; name: string; type: ResourceType };
+export type PhaseWorkTask = { id: string; title: string; status: TaskStatus; dueAt: string | Date | null };
+export type PhaseWorkResource = {
+  id: string;
+  name: string;
+  type: ResourceType;
+  contentType?: string | null;
+};
 
 function Section({
   title,
@@ -44,9 +51,6 @@ export function PhaseWork({
   tasks,
   resources,
   followUps,
-  members,
-  taskOptions,
-  resourceOptions,
   canTaskWrite,
   canResourceWrite,
 }: {
@@ -56,12 +60,10 @@ export function PhaseWork({
   tasks: PhaseWorkTask[];
   resources: PhaseWorkResource[];
   followUps: FollowUpRow[];
-  members: { id: string; name: string }[];
-  taskOptions: TaskOptions | null;
-  resourceOptions: ResourceOptions | null;
   canTaskWrite: boolean;
   canResourceWrite: boolean;
 }) {
+  const [preview, setPreview] = useState<PhaseWorkResource | null>(null);
   const taskPrefill: TaskFormInitial = {
     title: "",
     assigneeId: "",
@@ -75,14 +77,14 @@ export function PhaseWork({
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <>
+      <div className="grid gap-4 md:grid-cols-2">
       <Section
         title="Phase tasks"
         action={
-          canTaskWrite && taskOptions ? (
+          canTaskWrite ? (
             <TaskFormDialog
               mode="create"
-              options={taskOptions}
               initial={taskPrefill}
               trigger={
                 <Button variant="outline" size="sm">
@@ -113,9 +115,8 @@ export function PhaseWork({
       <Section
         title="Phase resources"
         action={
-          canResourceWrite && resourceOptions ? (
+          canResourceWrite ? (
             <UploadDialog
-              options={resourceOptions}
               prefill={{ businessId, pipelineId, phaseType }}
               trigger={
                 <Button variant="outline" size="sm">
@@ -133,7 +134,13 @@ export function PhaseWork({
           <div className="flex flex-col divide-y">
             {resources.map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-2 py-2 text-sm">
-                <span className="truncate">{r.name}</span>
+                <button
+                  type="button"
+                  className="truncate text-left hover:underline"
+                  onClick={() => setPreview(r)}
+                >
+                  {r.name}
+                </button>
                 <Badge variant="secondary" className="font-normal">
                   {RESOURCE_TYPE_LABELS[r.type]}
                 </Badge>
@@ -149,7 +156,6 @@ export function PhaseWork({
           action={
             canTaskWrite ? (
               <FollowUpFormDialog
-                members={members}
                 businessId={businessId}
                 pipelineId={pipelineId}
                 phaseType={phaseType}
@@ -166,6 +172,14 @@ export function PhaseWork({
           <FollowUpList items={followUps} canWrite={canTaskWrite} />
         </Section>
       </div>
-    </div>
+      </div>
+      <ResourcePreviewDialog
+        resource={preview}
+        open={preview !== null}
+        onOpenChange={(next) => {
+          if (!next) setPreview(null);
+        }}
+      />
+    </>
   );
 }

@@ -1,17 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
 import { MailIcon, PencilIcon, UserCheckIcon, UserXIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useResendInvite, useSetMemberStatus } from "@/features/team/api";
 import type { MemberFormInitial } from "@/features/team/components/member-form";
 import { MemberFormDialog } from "@/features/team/components/member-form-dialog";
-import {
-  resendInviteAction,
-  setMemberStatusAction,
-} from "@/features/team/server/team.actions";
+import { mutationErrorMessage } from "@/lib/api/errors";
 import { MemberStatus } from "@/generated/prisma/enums";
 
 export function MemberDetailActions({
@@ -23,33 +19,31 @@ export function MemberDetailActions({
   status: MemberStatus;
   initial: MemberFormInitial;
 }) {
-  const [isPending, startTransition] = useTransition();
-  const router = useRouter();
+  const setStatus = useSetMemberStatus();
+  const resendInvite = useResendInvite();
+  const isPending = setStatus.isPending || resendInvite.isPending;
   const isInactive = status === MemberStatus.INACTIVE;
 
-  function toggleStatus() {
-    startTransition(async () => {
-      const result = await setMemberStatusAction(
+  async function toggleStatus() {
+    try {
+      await setStatus.mutateAsync({
         id,
-        isInactive ? MemberStatus.ACTIVE : MemberStatus.INACTIVE,
-      );
-      if (result.ok) toast.success(isInactive ? "Member reactivated" : "Member deactivated");
-      else toast.error(result.error);
-      router.refresh();
-    });
+        status: isInactive ? MemberStatus.ACTIVE : MemberStatus.INACTIVE,
+      });
+      toast.success(isInactive ? "Member reactivated" : "Member deactivated");
+    } catch (error) {
+      toast.error(mutationErrorMessage(error));
+    }
   }
 
-  function resend() {
-    startTransition(async () => {
-      const result = await resendInviteAction(id);
-      if (result.ok) {
-        if (result.warning) toast.warning(result.warning);
-        else toast.success("Invite sent");
-      } else {
-        toast.error(result.error);
-      }
-      router.refresh();
-    });
+  async function resend() {
+    try {
+      const result = await resendInvite.mutateAsync(id);
+      if (result.warning) toast.warning(result.warning);
+      else toast.success("Invite sent");
+    } catch (error) {
+      toast.error(mutationErrorMessage(error));
+    }
   }
 
   return (

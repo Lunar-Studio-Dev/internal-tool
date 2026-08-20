@@ -1,8 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
 import { EllipsisVerticalIcon, EyeIcon, MailIcon, UserCheckIcon, UserXIcon } from "lucide-react";
 import { toast } from "sonner";
 
@@ -13,39 +11,35 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  resendInviteAction,
-  setMemberStatusAction,
-} from "@/features/team/server/team.actions";
+import { useResendInvite, useSetMemberStatus } from "@/features/team/api";
+import { mutationErrorMessage } from "@/lib/api/errors";
 import { MemberStatus } from "@/generated/prisma/enums";
 
 export function MemberRowActions({ id, status }: { id: string; status: MemberStatus }) {
-  const [isPending, startTransition] = useTransition();
-  const router = useRouter();
+  const setStatus = useSetMemberStatus();
+  const resendInvite = useResendInvite();
+  const isPending = setStatus.isPending || resendInvite.isPending;
   const isInactive = status === MemberStatus.INACTIVE;
 
-  function toggleStatus() {
-    startTransition(async () => {
-      const result = await setMemberStatusAction(
+  async function toggleStatus() {
+    try {
+      await setStatus.mutateAsync({
         id,
-        isInactive ? MemberStatus.ACTIVE : MemberStatus.INACTIVE,
-      );
-      if (!result.ok) toast.error(result.error);
-      router.refresh();
-    });
+        status: isInactive ? MemberStatus.ACTIVE : MemberStatus.INACTIVE,
+      });
+    } catch (error) {
+      toast.error(mutationErrorMessage(error));
+    }
   }
 
-  function resend() {
-    startTransition(async () => {
-      const result = await resendInviteAction(id);
-      if (result.ok) {
-        if (result.warning) toast.warning(result.warning);
-        else toast.success("Invite sent");
-      } else {
-        toast.error(result.error);
-      }
-      router.refresh();
-    });
+  async function resend() {
+    try {
+      const result = await resendInvite.mutateAsync(id);
+      if (result.warning) toast.warning(result.warning);
+      else toast.success("Invite sent");
+    } catch (error) {
+      toast.error(mutationErrorMessage(error));
+    }
   }
 
   return (

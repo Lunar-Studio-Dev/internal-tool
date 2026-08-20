@@ -1,23 +1,12 @@
-"use server";
-
-import { revalidatePath } from "next/cache";
+import "server-only";
 
 import { createFollowUpSchema } from "@/features/followups/schemas/followup.schema";
 import { logActivity } from "@/lib/activity";
 import { requirePermission } from "@/lib/auth/member";
 import { db } from "@/lib/db";
+import { emptyToNull } from "@/lib/utils";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
-
-function emptyToNull(value?: string | null): string | null {
-  const trimmed = (value ?? "").trim();
-  return trimmed.length ? trimmed : null;
-}
-
-function revalidateContexts(followUp: { businessId: string | null; pipelineId: string | null }) {
-  if (followUp.businessId) revalidatePath(`/businesses/${followUp.businessId}`);
-  if (followUp.pipelineId) revalidatePath(`/pipelines/${followUp.pipelineId}`);
-}
 
 export async function createFollowUpAction(input: unknown): Promise<ActionResult> {
   const member = await requirePermission("task:write");
@@ -55,7 +44,6 @@ export async function createFollowUpAction(input: unknown): Promise<ActionResult
       pipelineId: followUp.pipelineId,
       metadata: { reason: followUp.reason },
     });
-    revalidateContexts(followUp);
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not create the follow-up." };
@@ -82,6 +70,5 @@ export async function completeFollowUpAction(id: string): Promise<ActionResult> 
     pipelineId: followUp.pipelineId,
     metadata: { reason: followUp.reason },
   });
-  revalidateContexts(followUp);
   return { ok: true };
 }

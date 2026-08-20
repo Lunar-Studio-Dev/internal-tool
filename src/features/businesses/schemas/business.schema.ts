@@ -1,7 +1,6 @@
 import { z } from "zod";
 
-/** Optional trimmed text that also accepts "" (callers normalize "" → null). */
-const optionalText = (max: number) => z.string().trim().max(max).optional().or(z.literal(""));
+import { optionalText, optionalUrl } from "@/lib/zod-fields";
 
 /** Optional email: accepts "" or a valid-looking address (business email is not required). */
 const optionalEmail = z
@@ -11,16 +10,16 @@ const optionalEmail = z
   .refine((v) => v === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), "Enter a valid email");
 
 const socialSchema = z.object({
-  linkedin: optionalText(300),
-  instagram: optionalText(300),
-  facebook: optionalText(300),
-  x: optionalText(300),
+  linkedin: optionalUrl(300),
+  instagram: optionalUrl(300),
+  facebook: optionalUrl(300),
+  x: optionalUrl(300),
 });
 export type SocialLinks = z.infer<typeof socialSchema>;
 
 export const businessInfoSchema = z.object({
   name: z.string().trim().min(1, "Business name is required").max(160),
-  website: optionalText(300),
+  website: optionalUrl(300),
   email: optionalEmail,
   phone: optionalText(40),
   industry: optionalText(120),
@@ -34,7 +33,7 @@ export type BusinessInfoInput = z.infer<typeof businessInfoSchema>;
 /** Primary contact captured during business creation (WF-08). */
 export const primaryContactSchema = z.object({
   name: z.string().trim().min(1, "Contact name is required").max(120),
-  email: z.string().trim().email("Enter a valid contact email"),
+  email: z.string().trim().email("Enter a valid contact email").max(200),
   phone: optionalText(40),
 });
 

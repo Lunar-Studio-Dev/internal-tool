@@ -1,5 +1,6 @@
-import { LockIcon, SparklesIcon } from "lucide-react";
+import { LockIcon } from "lucide-react";
 
+import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,7 +16,7 @@ export function NoAccessScreen({ email, message }: { email: string; message: str
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted/30 p-6">
       <div className="flex items-center gap-2 text-lg font-semibold">
-        <SparklesIcon className="size-5" />
+        <Logo className="size-5" />
         Lunar Studio
       </div>
       <Card className="w-full max-w-md">

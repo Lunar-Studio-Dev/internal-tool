@@ -1,7 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
 import { format } from "date-fns";
 import { CheckIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -9,7 +7,8 @@ import { toast } from "sonner";
 import { EmptyState } from "@/components/common/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { completeFollowUpAction } from "@/features/followups/server/followups.actions";
+import { useCompleteFollowUp } from "@/features/followups/api";
+import { mutationErrorMessage } from "@/lib/api/errors";
 
 export type FollowUpRow = {
   id: string;
@@ -21,17 +20,16 @@ export type FollowUpRow = {
 };
 
 function FollowUpRowItem({ item, canWrite }: { item: FollowUpRow; canWrite: boolean }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const completeFollowUp = useCompleteFollowUp();
   const done = Boolean(item.completedAt);
 
-  function complete() {
-    startTransition(async () => {
-      const result = await completeFollowUpAction(item.id);
-      if (result.ok) toast.success("Follow-up completed");
-      else toast.error(result.error);
-      router.refresh();
-    });
+  async function complete() {
+    try {
+      await completeFollowUp.mutateAsync(item.id);
+      toast.success("Follow-up completed");
+    } catch (error) {
+      toast.error(mutationErrorMessage(error));
+    }
   }
 
   return (
@@ -51,7 +49,7 @@ function FollowUpRowItem({ item, canWrite }: { item: FollowUpRow; canWrite: bool
           Done
         </Badge>
       ) : canWrite ? (
-        <Button variant="ghost" size="sm" disabled={isPending} onClick={complete}>
+        <Button variant="ghost" size="sm" disabled={completeFollowUp.isPending} onClick={complete}>
           <CheckIcon className="size-4" />
           Mark done
         </Button>

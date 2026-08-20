@@ -1,22 +1,27 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useState } from "react";
 import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import { FieldError, FieldLabel } from "@/components/common/form-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { DuplicateDialog } from "@/features/businesses/components/duplicate-dialog";
+import { useCreateBusiness, useUpdateBusiness } from "@/features/businesses/api";
 import {
-  createBusinessAction,
-  updateBusinessAction,
-} from "@/features/businesses/server/businesses.actions";
-import type { DuplicateCandidate } from "@/features/businesses/server/duplicates";
+  createBusinessSchema,
+  updateBusinessSchema,
+} from "@/features/businesses/schemas/business.schema";
+import type { DuplicateCandidate } from "@/features/businesses/types";
+import { useCurrentMember } from "@/features/team/hooks/use-current-member";
+import { ApiError } from "@/lib/api/client";
+import { mutationErrorMessage } from "@/lib/api/errors";
+import { parseForm, type FieldErrors } from "@/lib/form";
 
 export type BusinessFormInitial = {
   id?: string;
@@ -58,11 +63,16 @@ export function BusinessForm({
   onCancel?: () => void;
 }) {
   const router = useRouter();
+  const member = useCurrentMember();
+  const allowForce = canForce || member.isAdmin;
+  const createBusiness = useCreateBusiness();
+  const updateBusiness = useUpdateBusiness();
   const [form, setForm] = useState<BusinessFormInitial>(initial);
   const [contact, setContact] = useState({ name: "", email: "", phone: "" });
   const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
   const [duplicates, setDuplicates] = useState<DuplicateCandidate[] | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const isPending = createBusiness.isPending || updateBusiness.isPending;
 
   function set<K extends keyof BusinessFormInitial>(key: K, value: BusinessFormInitial[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -87,32 +97,41 @@ export function BusinessForm({
     return { ...base, contact, force };
   }
 
-  function submit(force: boolean) {
+  async function submit(force: boolean) {
     setError(null);
-    startTransition(async () => {
+    const payload = buildPayload(force);
+    setErrors({});
+    try {
       if (mode === "create") {
-        const result = await createBusinessAction(buildPayload(force));
-        if (result.ok) {
-          setDuplicates(null);
-          toast.success("Business created");
-          onSuccess?.(result.id);
-          router.push(`/businesses/${result.id}`);
-        } else if ("duplicates" in result) {
-          setDuplicates(result.duplicates);
-        } else {
-          setDuplicates(null);
-          setError(result.error);
+        const parsed = parseForm(createBusinessSchema, payload);
+        if (!parsed.ok) {
+          setErrors(parsed.errors);
+          return;
         }
+        const result = await createBusiness.mutateAsync(parsed.data);
+        setDuplicates(null);
+        toast.success("Business created");
+        onSuccess?.(result.id);
+        if (result.id) router.push(`/businesses/${result.id}`);
       } else {
-        const result = await updateBusinessAction(buildPayload(false));
-        if (result.ok) {
-          toast.success("Business updated");
-          onSuccess?.(initial.id);
-        } else {
-          setError(result.error);
+        const parsed = parseForm(updateBusinessSchema, payload);
+        if (!parsed.ok) {
+          setErrors(parsed.errors);
+          return;
         }
+        await updateBusiness.mutateAsync(parsed.data);
+        toast.success("Business updated");
+        onSuccess?.(initial.id);
       }
-    });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        const body = err.body as { duplicates?: DuplicateCandidate[] } | undefined;
+        setDuplicates(body?.duplicates ?? []);
+        return;
+      }
+      setDuplicates(null);
+      setError(mutationErrorMessage(err));
+    }
   }
 
   function onSubmit(event: FormEvent) {
@@ -122,7 +141,7 @@ export function BusinessForm({
 
   return (
     <>
-      <form onSubmit={onSubmit} className="flex flex-col gap-6">
+      <form noValidate onSubmit={onSubmit} className="flex flex-col gap-6">
         {error ? (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
@@ -132,66 +151,81 @@ export function BusinessForm({
         <section className="flex flex-col gap-4">
           <h3 className="text-sm font-medium">Business information</h3>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="biz-name">Name</Label>
+            <FieldLabel htmlFor="biz-name" required>
+              Name
+            </FieldLabel>
             <Input
               id="biz-name"
               value={form.name}
               onChange={(e) => set("name", e.target.value)}
-              required
+              maxLength={160}
             />
+            <FieldError error={errors.name} />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="biz-website">Website</Label>
+              <FieldLabel htmlFor="biz-website">Website</FieldLabel>
               <Input
                 id="biz-website"
                 value={form.website}
                 onChange={(e) => set("website", e.target.value)}
                 placeholder="example.com"
+                maxLength={300}
               />
+              <FieldError error={errors.website} />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="biz-email">Email</Label>
+              <FieldLabel htmlFor="biz-email">Email</FieldLabel>
               <Input
                 id="biz-email"
                 type="email"
                 value={form.email}
                 onChange={(e) => set("email", e.target.value)}
+                maxLength={200}
               />
+              <FieldError error={errors.email} />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="biz-phone">Phone</Label>
+              <FieldLabel htmlFor="biz-phone">Phone</FieldLabel>
               <Input
                 id="biz-phone"
                 value={form.phone}
                 onChange={(e) => set("phone", e.target.value)}
+                maxLength={40}
               />
+              <FieldError error={errors.phone} />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="biz-industry">Industry</Label>
+              <FieldLabel htmlFor="biz-industry">Industry</FieldLabel>
               <Input
                 id="biz-industry"
                 value={form.industry}
                 onChange={(e) => set("industry", e.target.value)}
+                maxLength={120}
               />
+              <FieldError error={errors.industry} />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="biz-location">Location</Label>
+              <FieldLabel htmlFor="biz-location">Location</FieldLabel>
               <Input
                 id="biz-location"
                 value={form.location}
                 onChange={(e) => set("location", e.target.value)}
+                maxLength={160}
               />
+              <FieldError error={errors.location} />
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="biz-address">Address</Label>
+            <FieldLabel htmlFor="biz-address">Address</FieldLabel>
             <Textarea
               id="biz-address"
               value={form.address}
               onChange={(e) => set("address", e.target.value)}
               rows={2}
+              maxLength={400}
             />
+            <FieldError error={errors.address} />
           </div>
         </section>
 
@@ -207,31 +241,39 @@ export function BusinessForm({
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="contact-name">Name</Label>
+                  <FieldLabel htmlFor="contact-name" required>
+                    Name
+                  </FieldLabel>
                   <Input
                     id="contact-name"
                     value={contact.name}
                     onChange={(e) => setContact((c) => ({ ...c, name: e.target.value }))}
-                    required
+                    maxLength={120}
                   />
+                  <FieldError error={errors["contact.name"]} />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="contact-email">Email</Label>
+                  <FieldLabel htmlFor="contact-email" required>
+                    Email
+                  </FieldLabel>
                   <Input
                     id="contact-email"
                     type="email"
                     value={contact.email}
                     onChange={(e) => setContact((c) => ({ ...c, email: e.target.value }))}
-                    required
+                    maxLength={200}
                   />
+                  <FieldError error={errors["contact.email"]} />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="contact-phone">Phone</Label>
+                  <FieldLabel htmlFor="contact-phone">Phone</FieldLabel>
                   <Input
                     id="contact-phone"
                     value={contact.phone}
                     onChange={(e) => setContact((c) => ({ ...c, phone: e.target.value }))}
+                    maxLength={40}
                   />
+                  <FieldError error={errors["contact.phone"]} />
                 </div>
               </div>
             </section>
@@ -243,48 +285,58 @@ export function BusinessForm({
           <h3 className="text-sm font-medium">Social</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="soc-linkedin">LinkedIn</Label>
+              <FieldLabel htmlFor="soc-linkedin">LinkedIn</FieldLabel>
               <Input
                 id="soc-linkedin"
                 value={form.social.linkedin}
                 onChange={(e) => setSocial("linkedin", e.target.value)}
+                maxLength={300}
               />
+              <FieldError error={errors["social.linkedin"]} />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="soc-instagram">Instagram</Label>
+              <FieldLabel htmlFor="soc-instagram">Instagram</FieldLabel>
               <Input
                 id="soc-instagram"
                 value={form.social.instagram}
                 onChange={(e) => setSocial("instagram", e.target.value)}
+                maxLength={300}
               />
+              <FieldError error={errors["social.instagram"]} />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="soc-facebook">Facebook</Label>
+              <FieldLabel htmlFor="soc-facebook">Facebook</FieldLabel>
               <Input
                 id="soc-facebook"
                 value={form.social.facebook}
                 onChange={(e) => setSocial("facebook", e.target.value)}
+                maxLength={300}
               />
+              <FieldError error={errors["social.facebook"]} />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="soc-x">X</Label>
+              <FieldLabel htmlFor="soc-x">X</FieldLabel>
               <Input
                 id="soc-x"
                 value={form.social.x}
                 onChange={(e) => setSocial("x", e.target.value)}
+                maxLength={300}
               />
+              <FieldError error={errors["social.x"]} />
             </div>
           </div>
         </section>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="biz-notes">Notes</Label>
+          <FieldLabel htmlFor="biz-notes">Notes</FieldLabel>
           <Textarea
             id="biz-notes"
             value={form.notes}
             onChange={(e) => set("notes", e.target.value)}
             rows={3}
+            maxLength={2000}
           />
+          <FieldError error={errors.notes} />
         </div>
 
         <div className="flex justify-end gap-2">
@@ -307,7 +359,7 @@ export function BusinessForm({
         <DuplicateDialog
           candidates={duplicates}
           open={duplicates.length > 0}
-          canForce={canForce}
+          canForce={allowForce}
           pending={isPending}
           onCancel={() => setDuplicates(null)}
           onForceCreate={() => submit(true)}

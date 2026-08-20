@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 
 import {
   Dialog,
@@ -11,22 +11,41 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { taskQueries } from "@/features/tasks/api";
 import { TaskForm, type TaskFormInitial } from "@/features/tasks/components/task-form";
 import type { TaskOptions } from "@/features/tasks/server/tasks.queries";
+import { Priority, TaskStatus, type PhaseType } from "@/generated/prisma/enums";
 
 export function TaskFormDialog({
   mode,
   options,
   initial,
+  prefill,
   trigger,
 }: {
   mode: "create" | "edit";
-  options: TaskOptions;
+  options?: TaskOptions;
   initial?: TaskFormInitial;
+  prefill?: { businessId?: string | null; pipelineId?: string | null; phaseType?: PhaseType | null };
   trigger: ReactNode;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const optionsQuery = useQuery({ ...taskQueries.options(), enabled: open && !options });
+  const resolved = options ?? optionsQuery.data;
+  const mergedInitial: TaskFormInitial | undefined = initial ??
+    (prefill
+      ? {
+          title: "",
+          assigneeId: "",
+          dueAt: "",
+          priority: Priority.MEDIUM,
+          status: TaskStatus.TODO,
+          businessId: prefill.businessId ?? "",
+          pipelineId: prefill.pipelineId ?? "",
+          phaseType: prefill.phaseType ?? "",
+          notes: "",
+        }
+      : undefined);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -40,15 +59,16 @@ export function TaskFormDialog({
               : "Update this task's details."}
           </DialogDescription>
         </DialogHeader>
-        <TaskForm
-          mode={mode}
-          options={options}
-          initial={initial}
-          onSuccess={() => {
-            setOpen(false);
-            router.refresh();
-          }}
-        />
+        {resolved ? (
+          <TaskForm
+            mode={mode}
+            options={resolved}
+            initial={mergedInitial}
+            onSuccess={() => setOpen(false)}
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        )}
       </DialogContent>
     </Dialog>
   );

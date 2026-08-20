@@ -69,6 +69,25 @@ export async function presignDownload(key: string): Promise<string | null> {
   });
 }
 
+export type StoredObject = {
+  body: ReadableStream;
+  contentType?: string;
+  contentLength?: number;
+};
+
+/** Stream an object from R2 for authenticated preview/download. */
+export async function getObject(key: string): Promise<StoredObject | null> {
+  const s3 = getClient();
+  if (!s3) return null;
+  const result = await s3.send(new GetObjectCommand({ Bucket: env.R2_BUCKET!, Key: key }));
+  if (!result.Body) return null;
+  return {
+    body: result.Body.transformToWebStream(),
+    contentType: result.ContentType,
+    contentLength: result.ContentLength,
+  };
+}
+
 export async function deleteObject(key: string): Promise<void> {
   const s3 = getClient();
   if (!s3) return;

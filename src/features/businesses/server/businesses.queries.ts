@@ -2,6 +2,7 @@ import "server-only";
 
 import { requirePermission } from "@/lib/auth/member";
 import { db } from "@/lib/db";
+import { memberNameMap } from "@/lib/lookups";
 
 /**
  * Businesses with their primary contact and contact count. Pipeline counts are
@@ -61,14 +62,7 @@ export async function getBusinessActivity(
     take: limit,
   });
 
-  const actorIds = [...new Set(logs.map((l) => l.actorId).filter((v): v is string => Boolean(v)))];
-  const actors = actorIds.length
-    ? await db.teamMember.findMany({
-        where: { id: { in: actorIds } },
-        select: { id: true, name: true },
-      })
-    : [];
-  const actorName = new Map(actors.map((a) => [a.id, a.name]));
+  const actorName = await memberNameMap(logs.map((l) => l.actorId));
 
   return logs.map((l) => ({
     id: l.id,

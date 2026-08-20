@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { CheckIcon, Loader2Icon, PencilIcon, UserIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { FieldError, FieldLabel } from "@/components/common/form-field";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,7 +14,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -22,14 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useCancelTask, useCompleteTask, useReassignTask } from "@/features/tasks/api";
 import { TaskFormDialog } from "@/features/tasks/components/task-form-dialog";
 import type { TaskFormInitial } from "@/features/tasks/components/task-form";
-import {
-  cancelTaskAction,
-  completeTaskAction,
-  reassignTaskAction,
-} from "@/features/tasks/server/tasks.actions";
+import { reassignTaskSchema } from "@/features/tasks/schemas/task.schema";
 import type { TaskOptions } from "@/features/tasks/server/tasks.queries";
+import { mutationErrorMessage } from "@/lib/api/errors";
+import { parseForm, type FieldErrors } from "@/lib/form";
 import type { TaskStatus } from "@/generated/prisma/enums";
 
 function ReassignDialog({
@@ -41,26 +39,25 @@ function ReassignDialog({
   currentAssigneeId: string | null;
   members: TaskOptions["members"];
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [assigneeId, setAssigneeId] = useState(currentAssigneeId ?? "");
-  const [isPending, startTransition] = useTransition();
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const reassign = useReassignTask();
 
-  function save() {
-    if (!assigneeId) {
-      toast.error("Select an assignee");
+  async function save() {
+    const parsed = parseForm(reassignTaskSchema, { id: taskId, assigneeId });
+    if (!parsed.ok) {
+      setErrors(parsed.errors);
       return;
     }
-    startTransition(async () => {
-      const result = await reassignTaskAction({ id: taskId, assigneeId });
-      if (result.ok) {
-        toast.success("Task reassigned");
-        setOpen(false);
-        router.refresh();
-      } else {
-        toast.error(result.error);
-      }
-    });
+    setErrors({});
+    try {
+      await reassign.mutateAsync(parsed.data);
+      toast.success("Task reassigned");
+      setOpen(false);
+    } catch (error) {
+      toast.error(mutationErrorMessage(error));
+    }
   }
 
   return (
@@ -76,7 +73,9 @@ function ReassignDialog({
           <DialogTitle>Reassign task</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="reassign-to">Assign to</Label>
+          <FieldLabel htmlFor="reassign-to" required>
+            Assign to
+          </FieldLabel>
           <Select value={assigneeId} onValueChange={setAssigneeId}>
             <SelectTrigger id="reassign-to">
               <SelectValue placeholder="Select a member" />
@@ -89,10 +88,11 @@ function ReassignDialog({
               ))}
             </SelectContent>
           </Select>
+          <FieldError error={errors.assigneeId} />
         </div>
         <DialogFooter>
-          <Button onClick={save} disabled={isPending}>
-            {isPending ? <Loader2Icon className="size-4 animate-spin" /> : null}
+          <Button onClick={save} disabled={reassign.isPending}>
+            {reassign.isPending ? <Loader2Icon className="size-4 animate-spin" /> : null}
             Save
           </Button>
         </DialogFooter>
@@ -114,23 +114,23 @@ export function TaskDetailActions({
   initial: TaskFormInitial;
   options: TaskOptions;
 }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const completeTask = useCompleteTask();
+  const cancelTask = useCancelTask();
+  const isPending = completeTask.isPending || cancelTask.isPending;
   const done = status === "COMPLETED" || status === "CANCELLED";
-
-  function run(action: () => Promise<{ ok: true } | { ok: false; error: string }>, success: string) {
-    startTransition(async () => {
-      const result = await action();
-      if (result.ok) toast.success(success);
-      else toast.error(result.error);
-      router.refresh();
-    });
-  }
 
   return (
     <div className="flex flex-wrap gap-2">
       {!done ? (
-        <Button disabled={isPending} onClick={() => run(() => completeTaskAction(taskId), "Task completed")}>
+        <Button
+          disabled={isPending}
+          onClick={() =>
+            completeTask.mutate(taskId, {
+              onSuccess: () => toast.success("Task completed"),
+              onError: (error) => toast.error(mutationErrorMessage(error)),
+            })
+          }
+        >
           <CheckIcon className="size-4" />
           Mark Complete
         </Button>
@@ -151,7 +151,12 @@ export function TaskDetailActions({
         <Button
           variant="outline"
           disabled={isPending}
-          onClick={() => run(() => cancelTaskAction(taskId), "Task cancelled")}
+          onClick={() =>
+            cancelTask.mutate(taskId, {
+              onSuccess: () => toast.success("Task cancelled"),
+              onError: (error) => toast.error(mutationErrorMessage(error)),
+            })
+          }
         >
           <XIcon className="size-4" />
           Cancel

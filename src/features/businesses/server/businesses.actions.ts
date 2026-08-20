@@ -1,6 +1,4 @@
-"use server";
-
-import { revalidatePath } from "next/cache";
+import "server-only";
 
 import {
   createBusinessSchema,
@@ -11,14 +9,13 @@ import {
   createContactSchema,
   updateContactSchema,
 } from "@/features/businesses/schemas/contact.schema";
-import {
-  findPossibleDuplicates,
-  type DuplicateCandidate,
-} from "@/features/businesses/server/duplicates";
+import { findPossibleDuplicates } from "@/features/businesses/server/duplicates";
+import type { DuplicateCandidate } from "@/features/businesses/types";
 import { Prisma } from "@/generated/prisma/client";
 import { logActivity } from "@/lib/activity";
 import { requirePermission } from "@/lib/auth/member";
 import { db } from "@/lib/db";
+import { emptyToNull } from "@/lib/utils";
 
 export type ActionResult = { ok: true; warning?: string } | { ok: false; error: string };
 
@@ -28,12 +25,6 @@ export type CreateBusinessResult =
   | { ok: false; error: string }
   | { ok: false; duplicates: DuplicateCandidate[] };
 
-function emptyToNull(value?: string | null): string | null {
-  const trimmed = (value ?? "").trim();
-  return trimmed.length ? trimmed : null;
-}
-
-/** Drop empty social entries; return null when nothing remains. */
 function cleanSocial(social?: SocialLinks): Record<string, string> | null {
   if (!social) return null;
   const entries = Object.entries(social)
@@ -104,8 +95,6 @@ export async function createBusinessAction(input: unknown): Promise<CreateBusine
       businessId: business.id,
       metadata: { name: business.name },
     });
-
-    revalidatePath("/businesses");
     return { ok: true, id: business.id };
   } catch {
     return { ok: false, error: "Could not create the business." };
@@ -150,9 +139,6 @@ export async function updateBusinessAction(input: unknown): Promise<ActionResult
     businessId: data.id,
     metadata: { name: data.name },
   });
-
-  revalidatePath("/businesses");
-  revalidatePath(`/businesses/${data.id}`);
   return { ok: true };
 }
 
@@ -195,8 +181,6 @@ export async function createContactAction(input: unknown): Promise<ActionResult>
       businessId,
       metadata: { name, email },
     });
-
-    revalidatePath(`/businesses/${businessId}`);
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not add the contact." };
@@ -254,8 +238,6 @@ export async function updateContactAction(input: unknown): Promise<ActionResult>
     businessId,
     metadata: { name },
   });
-
-  revalidatePath(`/businesses/${businessId}`);
   return { ok: true };
 }
 
@@ -282,7 +264,5 @@ export async function setPrimaryContactAction(contactId: string): Promise<Action
     businessId: contact.businessId,
     metadata: { name: contact.name },
   });
-
-  revalidatePath(`/businesses/${contact.businessId}`);
   return { ok: true };
 }

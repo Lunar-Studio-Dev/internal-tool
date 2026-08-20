@@ -5,6 +5,8 @@ import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import { changePasswordAction } from "@/features/auth/actions";
+import { changePasswordFormSchema } from "@/features/auth/schemas/auth.schema";
+import { FieldError, FieldLabel } from "@/components/common/form-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { parseForm, type FieldErrors } from "@/lib/form";
 
 export function ChangePasswordDialog({
   open,
@@ -34,6 +36,7 @@ export function ChangePasswordDialog({
   const setOpen = isControlled ? (onOpenChange ?? (() => {})) : setInternalOpen;
 
   const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
   const [isPending, startTransition] = useTransition();
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -42,17 +45,22 @@ export function ChangePasswordDialog({
 
     const form = event.currentTarget;
     const data = new FormData(form);
-    const currentPassword = String(data.get("currentPassword") ?? "");
-    const newPassword = String(data.get("newPassword") ?? "");
-    const confirmPassword = String(data.get("confirmPassword") ?? "");
-
-    if (newPassword !== confirmPassword) {
-      setError("New password and confirmation do not match.");
+    const parsed = parseForm(changePasswordFormSchema, {
+      currentPassword: String(data.get("currentPassword") ?? ""),
+      newPassword: String(data.get("newPassword") ?? ""),
+      confirmPassword: String(data.get("confirmPassword") ?? ""),
+    });
+    if (!parsed.ok) {
+      setErrors(parsed.errors);
       return;
     }
+    setErrors({});
 
     startTransition(async () => {
-      const result = await changePasswordAction({ currentPassword, newPassword });
+      const result = await changePasswordAction({
+        currentPassword: parsed.data.currentPassword,
+        newPassword: parsed.data.newPassword,
+      });
       if (result.ok) {
         toast.success("Password updated");
         form.reset();
@@ -74,43 +82,52 @@ export function ChangePasswordDialog({
             out.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <form noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
           {error ? (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           ) : null}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="currentPassword">Current password</Label>
+            <FieldLabel htmlFor="currentPassword" required>
+              Current password
+            </FieldLabel>
             <Input
               id="currentPassword"
               name="currentPassword"
               type="password"
               autoComplete="current-password"
-              required
+              maxLength={200}
             />
+            <FieldError error={errors.currentPassword} />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="newPassword">New password</Label>
+            <FieldLabel htmlFor="newPassword" required>
+              New password
+            </FieldLabel>
             <Input
               id="newPassword"
               name="newPassword"
               type="password"
               autoComplete="new-password"
               minLength={8}
-              required
+              maxLength={200}
             />
+            <FieldError error={errors.newPassword} />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="confirmPassword">Confirm new password</Label>
+            <FieldLabel htmlFor="confirmPassword" required>
+              Confirm new password
+            </FieldLabel>
             <Input
               id="confirmPassword"
               name="confirmPassword"
               type="password"
               autoComplete="new-password"
               minLength={8}
-              required
+              maxLength={200}
             />
+            <FieldError error={errors.confirmPassword} />
           </div>
           <DialogFooter className="mt-2">
             <Button type="submit" disabled={isPending}>

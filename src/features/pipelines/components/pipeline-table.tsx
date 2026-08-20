@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { PlusIcon, SearchIcon } from "lucide-react";
 
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
+import { QueryGate } from "@/components/common/query-gate";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,11 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { pipelineQueries } from "@/features/pipelines/api";
+import { PipelineCreateDialog } from "@/features/pipelines/components/pipeline-create-dialog";
 import {
   PHASE_LABELS,
-  PHASE_ORDER,
   PIPELINE_STATUS_OPTIONS,
+  WORKABLE_PHASES,
 } from "@/features/pipelines/constants";
+import { useCan } from "@/features/team/hooks/use-current-member";
 import { PhaseType, PipelineStatus } from "@/generated/prisma/enums";
 
 export type PipelineRow = {
@@ -31,13 +36,34 @@ export type PipelineRow = {
   currentPhase: PhaseType;
   status: PipelineStatus;
   ownerName: string;
+  createdAt: string;
 };
 
-export function PipelineTable({ pipelines }: { pipelines: PipelineRow[] }) {
+export function PipelineTable() {
+  const query = useQuery(pipelineQueries.list());
+  const canWrite = useCan("pipeline:write");
   const [search, setSearch] = useState("");
   const [phase, setPhase] = useState<"ALL" | PhaseType>("ALL");
   const [status, setStatus] = useState<"ALL" | PipelineStatus>("ALL");
   const [owner, setOwner] = useState<"ALL" | string>("ALL");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
+  const pipelines: PipelineRow[] = useMemo(
+    () =>
+      (query.data ?? []).map((p) => ({
+        id: p.id,
+        code: p.code,
+        businessId: p.businessId,
+        businessName: p.business.name,
+        name: p.name,
+        currentPhase: p.currentPhase,
+        status: p.status,
+        ownerName: p.ownerName ?? "",
+        createdAt: p.createdAt,
+      })),
+    [query.data],
+  );
 
   const owners = useMemo(
     () => [...new Set(pipelines.map((p) => p.ownerName).filter(Boolean))].sort(),
@@ -53,9 +79,11 @@ export function PipelineTable({ pipelines }: { pipelines: PipelineRow[] }) {
       if (phase !== "ALL" && p.currentPhase !== phase) return false;
       if (status !== "ALL" && p.status !== status) return false;
       if (owner !== "ALL" && p.ownerName !== owner) return false;
+      if (fromDate && p.createdAt.slice(0, 10) < fromDate) return false;
+      if (toDate && p.createdAt.slice(0, 10) > toDate) return false;
       return true;
     });
-  }, [pipelines, search, phase, status, owner]);
+  }, [pipelines, search, phase, status, owner, fromDate, toDate]);
 
   const columns: DataTableColumn<PipelineRow>[] = [
     {
@@ -95,6 +123,7 @@ export function PipelineTable({ pipelines }: { pipelines: PipelineRow[] }) {
   ];
 
   return (
+    <QueryGate isPending={query.isPending} isError={query.isError} error={query.error}>
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-52 flex-1">
@@ -112,7 +141,7 @@ export function PipelineTable({ pipelines }: { pipelines: PipelineRow[] }) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">All phases</SelectItem>
-            {PHASE_ORDER.map((p) => (
+            {WORKABLE_PHASES.map((p) => (
               <SelectItem key={p} value={p}>
                 {PHASE_LABELS[p]}
               </SelectItem>
@@ -147,12 +176,30 @@ export function PipelineTable({ pipelines }: { pipelines: PipelineRow[] }) {
             </SelectContent>
           </Select>
         ) : null}
-        <Button asChild>
-          <Link href="/pipelines/new">
-            <PlusIcon className="size-4" />
-            New Pipeline
-          </Link>
-        </Button>
+        <Input
+          type="date"
+          value={fromDate}
+          onChange={(e) => setFromDate(e.target.value)}
+          className="w-40"
+          aria-label="Created from"
+        />
+        <Input
+          type="date"
+          value={toDate}
+          onChange={(e) => setToDate(e.target.value)}
+          className="w-40"
+          aria-label="Created to"
+        />
+        {canWrite ? (
+          <PipelineCreateDialog
+            trigger={
+              <Button>
+                <PlusIcon className="size-4" />
+                New Pipeline
+              </Button>
+            }
+          />
+        ) : null}
       </div>
       <DataTable
         columns={columns}
@@ -161,5 +208,6 @@ export function PipelineTable({ pipelines }: { pipelines: PipelineRow[] }) {
         empty="No pipelines match your filters."
       />
     </div>
+    </QueryGate>
   );
 }

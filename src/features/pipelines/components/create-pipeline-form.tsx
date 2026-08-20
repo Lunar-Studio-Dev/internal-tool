@@ -1,14 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useState } from "react";
 import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import { FieldError, FieldLabel } from "@/components/common/form-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -17,12 +17,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useCreatePipeline } from "@/features/pipelines/api";
 import {
   BusinessCombobox,
   type BusinessOption,
 } from "@/features/pipelines/components/business-combobox";
 import { LEAD_SOURCE_LABELS, LEAD_SOURCE_ORDER } from "@/features/pipelines/constants";
-import { createPipelineAction } from "@/features/pipelines/server/pipelines.actions";
+import { createPipelineSchema } from "@/features/pipelines/schemas/pipeline.schema";
+import { mutationErrorMessage } from "@/lib/api/errors";
+import { parseForm, type FieldErrors } from "@/lib/form";
 import { LeadSource } from "@/generated/prisma/enums";
 
 export type AssigneeOption = { id: string; name: string };
@@ -33,12 +36,15 @@ export function CreatePipelineForm({
   businesses,
   assignees,
   fixedBusiness,
+  onCancel,
 }: {
   businesses: BusinessOption[];
   assignees: AssigneeOption[];
   fixedBusiness?: { id: string; name: string } | null;
+  onCancel?: () => void;
 }) {
   const router = useRouter();
+  const createPipeline = useCreatePipeline();
   const [businessId, setBusinessId] = useState<string | null>(fixedBusiness?.id ?? null);
   const [name, setName] = useState("");
   const [opportunityType, setOpportunityType] = useState("");
@@ -46,35 +52,36 @@ export function CreatePipelineForm({
   const [ownerId, setOwnerId] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const isPending = createPipeline.isPending;
 
-  function onSubmit(event: FormEvent) {
+  async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    if (!businessId) {
-      setError("Select a business for this pipeline.");
+    const parsed = parseForm(createPipelineSchema, {
+      businessId: businessId ?? "",
+      name,
+      opportunityType,
+      leadSource,
+      ownerId,
+      notes,
+    });
+    if (!parsed.ok) {
+      setErrors(parsed.errors);
       return;
     }
-    startTransition(async () => {
-      const result = await createPipelineAction({
-        businessId,
-        name,
-        opportunityType,
-        leadSource,
-        ownerId,
-        notes,
-      });
-      if (result.ok) {
-        toast.success("Pipeline created");
-        router.push(`/pipelines/${result.id}`);
-      } else {
-        setError(result.error);
-      }
-    });
+    setErrors({});
+    try {
+      const result = await createPipeline.mutateAsync(parsed.data);
+      toast.success("Pipeline created");
+      if (result.id) router.push(`/pipelines/${result.id}`);
+    } catch (error) {
+      setError(mutationErrorMessage(error));
+    }
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+    <form noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
       {error ? (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -82,31 +89,39 @@ export function CreatePipelineForm({
       ) : null}
 
       <div className="flex flex-col gap-2">
-        <Label>Business</Label>
+        <FieldLabel required>Business</FieldLabel>
         {fixedBusiness ? (
           <Input value={fixedBusiness.name} readOnly className="bg-muted" />
         ) : (
           <BusinessCombobox options={businesses} value={businessId} onChange={setBusinessId} />
         )}
+        <FieldError error={errors.businessId} />
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="pl-name">Pipeline name</Label>
-        <Input id="pl-name" value={name} onChange={(e) => setName(e.target.value)} required />
+        <FieldLabel htmlFor="pl-name" required>
+          Pipeline name
+        </FieldLabel>
+        <Input id="pl-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={160} />
+        <FieldError error={errors.name} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="pl-opp">Opportunity type</Label>
+          <FieldLabel htmlFor="pl-opp">Opportunity type</FieldLabel>
           <Input
             id="pl-opp"
             value={opportunityType}
             onChange={(e) => setOpportunityType(e.target.value)}
             placeholder="e.g. ERP Automation"
+            maxLength={160}
           />
+          <FieldError error={errors.opportunityType} />
         </div>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="pl-lead">Lead source</Label>
+          <FieldLabel htmlFor="pl-lead" required>
+            Lead source
+          </FieldLabel>
           <Select value={leadSource} onValueChange={(v) => setLeadSource(v as LeadSource)}>
             <SelectTrigger id="pl-lead">
               <SelectValue placeholder="Lead source" />
@@ -119,11 +134,12 @@ export function CreatePipelineForm({
               ))}
             </SelectContent>
           </Select>
+          <FieldError error={errors.leadSource} />
         </div>
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="pl-owner">Assigned to</Label>
+        <FieldLabel htmlFor="pl-owner">Assigned to</FieldLabel>
         <Select
           value={ownerId || UNASSIGNED}
           onValueChange={(v) => setOwnerId(v === UNASSIGNED ? "" : v)}
@@ -140,11 +156,19 @@ export function CreatePipelineForm({
             ))}
           </SelectContent>
         </Select>
+        <FieldError error={errors.ownerId} />
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="pl-notes">Notes</Label>
-        <Textarea id="pl-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+        <FieldLabel htmlFor="pl-notes">Notes</FieldLabel>
+        <Textarea
+          id="pl-notes"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={3}
+          maxLength={2000}
+        />
+        <FieldError error={errors.notes} />
       </div>
 
       <p className="text-xs text-muted-foreground">
@@ -153,7 +177,7 @@ export function CreatePipelineForm({
       </p>
 
       <div className="flex justify-end gap-2 pt-2">
-        <Button type="button" variant="outline" disabled={isPending} onClick={() => router.back()}>
+        <Button type="button" variant="outline" disabled={isPending} onClick={() => (onCancel ? onCancel() : router.back())}>
           Cancel
         </Button>
         <Button type="submit" disabled={isPending}>

@@ -1,6 +1,4 @@
-"use server";
-
-import { revalidatePath } from "next/cache";
+import "server-only";
 
 import {
   createMemberSchema,
@@ -126,7 +124,6 @@ export async function createMemberAction(input: unknown): Promise<ActionResult> 
   // 3) Email the temporary password so the member can sign in.
   const sent = await sendMemberInviteEmail({ to: email, name, tempPassword, signInUrl: SIGN_IN_URL });
 
-  revalidatePath("/team");
   if (sent.ok) return { ok: true };
   return {
     ok: true,
@@ -155,8 +152,6 @@ export async function updateMemberAction(input: unknown): Promise<ActionResult> 
     return { ok: false, error: "Could not update the member." };
   }
 
-  revalidatePath("/team");
-  revalidatePath(`/team/${id}`);
   return { ok: true };
 }
 
@@ -170,8 +165,6 @@ export async function setMemberStatusAction(
     return { ok: false, error: "Invalid status" };
   }
   await db.teamMember.update({ where: { id }, data: { status } });
-  revalidatePath("/team");
-  revalidatePath(`/team/${id}`);
   return { ok: true };
 }
 
@@ -213,7 +206,6 @@ export async function resendInviteAction(id: string): Promise<ActionResult> {
     signInUrl: SIGN_IN_URL,
   });
 
-  revalidatePath(`/team/${id}`);
   if (sent.ok) return { ok: true };
   return {
     ok: true,

@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { DuplicateCandidate } from "@/features/businesses/server/duplicates";
+import type { DuplicateCandidate } from "@/features/businesses/types";
 
 /**
  * WF-09 — surfaces possible existing businesses before a duplicate is created.

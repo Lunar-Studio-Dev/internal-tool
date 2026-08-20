@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { SettingsIcon, ShieldIcon } from "lucide-react";
+import { SettingsIcon } from "lucide-react";
 
 import { ComingSoon } from "@/components/common/coming-soon";
-import { EmptyState } from "@/components/common/empty-state";
+import { NotAuthorized } from "@/components/layout/not-authorized";
 import { PageHeader } from "@/components/common/page-header";
 import { currentMemberCan } from "@/lib/auth/member";
 
@@ -12,14 +12,10 @@ export const metadata: Metadata = { title: "Settings" };
 export default async function SettingsPage() {
   if (!(await currentMemberCan("settings:manage"))) {
     return (
-      <>
-        <PageHeader title="Settings" breadcrumbs={[{ label: "Settings" }]} />
-        <EmptyState
-          icon={ShieldIcon}
-          title="Not authorized"
-          description="You need the Admin role to manage settings."
-        />
-      </>
+      <NotAuthorized
+        title="Settings"
+        description="You need the Admin role to manage settings."
+      />
     );
   }
 

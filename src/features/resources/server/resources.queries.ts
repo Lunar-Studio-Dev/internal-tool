@@ -2,24 +2,16 @@ import "server-only";
 
 import { requirePermission } from "@/lib/auth/member";
 import { db } from "@/lib/db";
+import { businessNameMap, pipelineCodeMap } from "@/lib/lookups";
 
 type ScopedRecord = { businessId: string | null; pipelineId: string | null };
 
 async function resolveScopes(items: ScopedRecord[]) {
-  const businessIds = [...new Set(items.map((i) => i.businessId).filter((v): v is string => Boolean(v)))];
-  const pipelineIds = [...new Set(items.map((i) => i.pipelineId).filter((v): v is string => Boolean(v)))];
-  const [businesses, pipelines] = await Promise.all([
-    businessIds.length
-      ? db.business.findMany({ where: { id: { in: businessIds } }, select: { id: true, name: true } })
-      : [],
-    pipelineIds.length
-      ? db.pipeline.findMany({ where: { id: { in: pipelineIds } }, select: { id: true, code: true } })
-      : [],
+  const [business, pipeline] = await Promise.all([
+    businessNameMap(items.map((i) => i.businessId)),
+    pipelineCodeMap(items.map((i) => i.pipelineId)),
   ]);
-  return {
-    business: new Map(businesses.map((b) => [b.id, b.name])),
-    pipeline: new Map(pipelines.map((p) => [p.id, p.code])),
-  };
+  return { business, pipeline };
 }
 
 function decorate<T extends ScopedRecord>(item: T, maps: Awaited<ReturnType<typeof resolveScopes>>) {
@@ -62,3 +54,23 @@ export async function listResourceOptions() {
   };
 }
 export type ResourceOptions = Awaited<ReturnType<typeof listResourceOptions>>;
+
+/** Resources scoped to a business (detail tab). */
+export async function listResourcesForBusiness(businessId: string) {
+  await requirePermission("resource:read");
+  const items = await db.resource.findMany({
+    where: { businessId },
+    orderBy: { createdAt: "desc" },
+  });
+  const maps = await resolveScopes(items);
+  return items.map((r) => decorate(r, maps));
+}
+
+/** Single resource for the fullscreen viewer. */
+export async function getResourceById(id: string) {
+  await requirePermission("resource:read");
+  const item = await db.resource.findUnique({ where: { id } });
+  if (!item) return null;
+  const maps = await resolveScopes([item]);
+  return decorate(item, maps);
+}

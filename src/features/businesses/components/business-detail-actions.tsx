@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { PencilIcon } from "lucide-react";
 
@@ -19,7 +18,6 @@ import {
 } from "@/features/businesses/components/business-form";
 
 export function BusinessDetailActions({ initial }: { initial: BusinessFormInitial }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
 
   return (
@@ -42,7 +40,6 @@ export function BusinessDetailActions({ initial }: { initial: BusinessFormInitia
           initial={initial}
           onSuccess={() => {
             setOpen(false);
-            router.refresh();
           }}
           onCancel={() => setOpen(false)}
         />

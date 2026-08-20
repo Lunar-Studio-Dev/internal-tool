@@ -1,14 +1,14 @@
 "use client";
 
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useState } from "react";
 import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import { FieldError, FieldLabel } from "@/components/common/form-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -17,11 +17,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useCreateContact, useUpdateContact } from "@/features/businesses/api";
 import { CONTACT_ROLE_LABELS, CONTACT_ROLE_ORDER } from "@/features/businesses/constants";
 import {
-  createContactAction,
-  updateContactAction,
-} from "@/features/businesses/server/businesses.actions";
+  createContactSchema,
+  updateContactSchema,
+} from "@/features/businesses/schemas/contact.schema";
+import { mutationErrorMessage } from "@/lib/api/errors";
+import { parseForm, type FieldErrors } from "@/lib/form";
 import { ContactRole } from "@/generated/prisma/enums";
 
 export type ContactFormInitial = {
@@ -47,7 +50,6 @@ export function ContactForm({
   mode,
   businessId,
   initial = EMPTY,
-  /** True when this contact is currently the sole primary — its toggle is locked. */
   lockPrimary = false,
   onSuccess,
 }: {
@@ -64,29 +66,41 @@ export function ContactForm({
   const [isPrimary, setIsPrimary] = useState(initial.isPrimary);
   const [notes, setNotes] = useState(initial.notes);
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const createContact = useCreateContact();
+  const updateContact = useUpdateContact();
+  const isPending = createContact.isPending || updateContact.isPending;
 
-  function onSubmit(event: FormEvent) {
+  async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    startTransition(async () => {
-      const payload = { businessId, name, email, phone, role, isPrimary, notes };
-      const result =
-        mode === "create"
-          ? await createContactAction(payload)
-          : await updateContactAction({ ...payload, id: initial.id });
-
-      if (result.ok) {
-        toast.success(mode === "create" ? "Contact added" : "Contact updated");
-        onSuccess?.();
+    const payload = { businessId, name, email, phone, role, isPrimary, notes };
+    setErrors({});
+    try {
+      if (mode === "create") {
+        const parsed = parseForm(createContactSchema, payload);
+        if (!parsed.ok) {
+          setErrors(parsed.errors);
+          return;
+        }
+        await createContact.mutateAsync(parsed.data);
       } else {
-        setError(result.error);
+        const parsed = parseForm(updateContactSchema, { ...payload, id: initial.id });
+        if (!parsed.ok) {
+          setErrors(parsed.errors);
+          return;
+        }
+        await updateContact.mutateAsync(parsed.data);
       }
-    });
+      toast.success(mode === "create" ? "Contact added" : "Contact updated");
+      onSuccess?.();
+    } catch (error) {
+      setError(mutationErrorMessage(error));
+    }
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+    <form noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
       {error ? (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -94,29 +108,38 @@ export function ContactForm({
       ) : null}
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="c-name">Name</Label>
-        <Input id="c-name" value={name} onChange={(e) => setName(e.target.value)} required />
+        <FieldLabel htmlFor="c-name" required>
+          Name
+        </FieldLabel>
+        <Input id="c-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
+        <FieldError error={errors.name} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="c-email">Email</Label>
+          <FieldLabel htmlFor="c-email" required>
+            Email
+          </FieldLabel>
           <Input
             id="c-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            required
+            maxLength={200}
           />
+          <FieldError error={errors.email} />
         </div>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="c-phone">Phone</Label>
-          <Input id="c-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <FieldLabel htmlFor="c-phone">Phone</FieldLabel>
+          <Input id="c-phone" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={40} />
+          <FieldError error={errors.phone} />
         </div>
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="c-role">Role</Label>
+        <FieldLabel htmlFor="c-role" required>
+          Role
+        </FieldLabel>
         <Select value={role} onValueChange={(v) => setRole(v as ContactRole)}>
           <SelectTrigger id="c-role">
             <SelectValue placeholder="Role" />
@@ -129,11 +152,19 @@ export function ContactForm({
             ))}
           </SelectContent>
         </Select>
+        <FieldError error={errors.role} />
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="c-notes">Notes</Label>
-        <Textarea id="c-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+        <FieldLabel htmlFor="c-notes">Notes</FieldLabel>
+        <Textarea
+          id="c-notes"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={2}
+          maxLength={1000}
+        />
+        <FieldError error={errors.notes} />
       </div>
 
       <label className="flex items-center gap-2 rounded-md border p-2.5 text-sm">

@@ -1,7 +1,6 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import {
   Dialog,
@@ -23,7 +22,6 @@ export function MemberFormDialog({
   initial?: MemberFormInitial;
 }) {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -40,7 +38,6 @@ export function MemberFormDialog({
           initial={initial}
           onSuccess={() => {
             setOpen(false);
-            router.refresh();
           }}
         />
       </DialogContent>

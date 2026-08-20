@@ -1,19 +1,19 @@
 "use client";
 
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useState } from "react";
 import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import { FieldError, FieldLabel } from "@/components/common/form-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useCreateMember, useUpdateMember } from "@/features/team/api";
 import { ROLE_LABELS, ROLE_ORDER } from "@/features/team/constants";
-import {
-  createMemberAction,
-  updateMemberAction,
-} from "@/features/team/server/team.actions";
+import { createMemberSchema, updateMemberSchema } from "@/features/team/schemas/team.schema";
+import { mutationErrorMessage } from "@/lib/api/errors";
+import { parseForm, type FieldErrors } from "@/lib/form";
 import { type RoleName } from "@/generated/prisma/enums";
 
 export type MemberFormInitial = {
@@ -40,7 +40,10 @@ export function MemberForm({
   const [phone, setPhone] = useState(initial.phone);
   const [roles, setRoles] = useState<RoleName[]>(initial.roles);
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const createMember = useCreateMember();
+  const updateMember = useUpdateMember();
+  const isPending = createMember.isPending || updateMember.isPending;
 
   function toggleRole(role: RoleName, checked: boolean) {
     setRoles((prev) =>
@@ -48,27 +51,38 @@ export function MemberForm({
     );
   }
 
-  function onSubmit(event: FormEvent) {
+  async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    startTransition(async () => {
-      const result =
-        mode === "create"
-          ? await createMemberAction({ name, email, phone, roles })
-          : await updateMemberAction({ id: initial.id, name, email, phone, roles });
-
-      if (result.ok) {
-        if (result.warning) toast.warning(result.warning);
-        else toast.success(mode === "create" ? "Member invited" : "Member updated");
-        onSuccess?.();
+    const payload = { name, email, phone, roles };
+    setErrors({});
+    try {
+      let result;
+      if (mode === "create") {
+        const parsed = parseForm(createMemberSchema, payload);
+        if (!parsed.ok) {
+          setErrors(parsed.errors);
+          return;
+        }
+        result = await createMember.mutateAsync(parsed.data);
       } else {
-        setError(result.error);
+        const parsed = parseForm(updateMemberSchema, { ...payload, id: initial.id });
+        if (!parsed.ok) {
+          setErrors(parsed.errors);
+          return;
+        }
+        result = await updateMember.mutateAsync(parsed.data);
       }
-    });
+      if (result.warning) toast.warning(result.warning);
+      else toast.success(mode === "create" ? "Member invited" : "Member updated");
+      onSuccess?.();
+    } catch (error) {
+      setError(mutationErrorMessage(error));
+    }
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+    <form noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
       {error ? (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -76,36 +90,48 @@ export function MemberForm({
       ) : null}
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="member-name">Name</Label>
-        <Input id="member-name" value={name} onChange={(e) => setName(e.target.value)} required />
+        <FieldLabel htmlFor="member-name" required>
+          Name
+        </FieldLabel>
+        <Input id="member-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
+        <FieldError error={errors.name} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="member-email">Email</Label>
+          <FieldLabel htmlFor="member-email" required>
+            Email
+          </FieldLabel>
           <Input
             id="member-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            required
             readOnly={mode === "edit"}
             className={mode === "edit" ? "bg-muted" : undefined}
+            maxLength={200}
           />
           {mode === "edit" ? (
             <p className="text-xs text-muted-foreground">
               Email is the sign-in identity and can&apos;t be changed here.
             </p>
           ) : null}
+          <FieldError error={errors.email} />
         </div>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="member-phone">Phone</Label>
-          <Input id="member-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <FieldLabel htmlFor="member-phone">Phone</FieldLabel>
+          <Input
+            id="member-phone"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            maxLength={40}
+          />
+          <FieldError error={errors.phone} />
         </div>
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label>Roles</Label>
+        <FieldLabel required>Roles</FieldLabel>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {ROLE_ORDER.map((role) => (
             <label
@@ -120,6 +146,7 @@ export function MemberForm({
             </label>
           ))}
         </div>
+        <FieldError error={errors.roles} />
         <p className="text-xs text-muted-foreground">
           {mode === "create"
             ? "On save, the sign-in account is created and a temporary password is emailed to the member."
