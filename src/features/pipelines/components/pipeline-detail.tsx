@@ -227,7 +227,7 @@ export function PipelineDetail({ id }: { id: string }) {
                     <CardHeader>
                       <CardTitle className="text-base">Deactivated</CardTitle>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
+                    <CardContent className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 md:grid-cols-3">
                       <div className="flex flex-col gap-0.5">
                         <span className="text-xs text-muted-foreground">Reason</span>
                         <span>{pipeline.reasonLabel ?? "—"}</span>

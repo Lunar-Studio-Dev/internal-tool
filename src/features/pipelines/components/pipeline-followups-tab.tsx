@@ -2,8 +2,21 @@
 
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { AlertCircleIcon, CalendarClockIcon, CheckCircle2Icon, ClockIcon, PlusIcon } from "lucide-react";
+import {
+  AlertCircleIcon,
+  CalendarClockIcon,
+  CheckCircle2Icon,
+  ClockIcon,
+  PlusIcon,
+} from "lucide-react";
 
+import {
+  countActiveFilters,
+  FilterChipGroup,
+  FilterSheetSection,
+  ListFilterBar,
+  useFilterSheetDraft,
+} from "@/components/common/list-filter-bar";
 import { MetricCard, METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import { Button } from "@/components/ui/button";
 import { FollowUpFormDialog } from "@/features/followups/components/followup-form-dialog";
@@ -22,6 +35,8 @@ const FILTERS: { value: FollowUpFilter; label: string }[] = [
   { value: "completed", label: "Completed" },
 ];
 
+const FILTER_DEFAULTS = { filter: "all" as FollowUpFilter };
+
 export function PipelineFollowUpsTab({
   pipelineId,
   businessId,
@@ -38,8 +53,11 @@ export function PipelineFollowUpsTab({
   deactivated: boolean;
 }) {
   const [filter, setFilter] = useState<FollowUpFilter>("all");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const { draft, setDraft } = useFilterSheetDraft({ filter }, filterOpen);
   const metrics = useMemo(() => computeFollowUpMetrics(followUps), [followUps]);
   const filtered = useMemo(() => filterFollowUps(followUps, filter), [followUps, filter]);
+  const activeFilterCount = countActiveFilters({ filter }, FILTER_DEFAULTS);
 
   return (
     <div className="flex flex-col gap-4">
@@ -70,33 +88,52 @@ export function PipelineFollowUpsTab({
         />
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {FILTERS.map((item) => (
-            <Button
-              key={item.value}
-              variant={filter === item.value ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter(item.value)}
-            >
-              {item.label}
-            </Button>
-          ))}
-        </div>
-        {canWrite && !deactivated ? (
-          <FollowUpFormDialog
-            businessId={businessId}
-            pipelineId={pipelineId}
-            phaseType={currentPhase}
-            trigger={
-              <Button size="sm">
-                <PlusIcon className="size-4" />
-                Schedule follow-up
+      <ListFilterBar
+        showSearch={false}
+        activeFilterCount={activeFilterCount}
+        filterOpen={filterOpen}
+        onFilterOpenChange={setFilterOpen}
+        onApplyFilters={() => setFilter(draft.filter)}
+        onResetFilters={() => setDraft(FILTER_DEFAULTS)}
+        filterSheetContent={
+          <FilterSheetSection label="Status">
+            <FilterChipGroup
+              value={draft.filter}
+              onChange={(value) => setDraft({ filter: value })}
+              options={FILTERS}
+            />
+          </FilterSheetSection>
+        }
+        desktopFilters={
+          <div className="flex flex-wrap gap-2">
+            {FILTERS.map((item) => (
+              <Button
+                key={item.value}
+                variant={filter === item.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter(item.value)}
+              >
+                {item.label}
               </Button>
-            }
-          />
-        ) : null}
-      </div>
+            ))}
+          </div>
+        }
+        actions={
+          canWrite && !deactivated ? (
+            <FollowUpFormDialog
+              businessId={businessId}
+              pipelineId={pipelineId}
+              phaseType={currentPhase}
+              trigger={
+                <Button size="sm">
+                  <PlusIcon className="size-4" />
+                  Schedule follow-up
+                </Button>
+              }
+            />
+          ) : null
+        }
+      />
 
       <FollowUpList
         items={filtered}

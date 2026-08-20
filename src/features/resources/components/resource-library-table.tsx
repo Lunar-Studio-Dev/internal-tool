@@ -2,10 +2,16 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { EyeIcon, Loader2Icon, SearchIcon, Trash2Icon } from "lucide-react";
+import { EyeIcon, Loader2Icon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
+import {
+  countActiveFilters,
+  FilterSheetSection,
+  ListFilterBar,
+  useFilterSheetDraft,
+} from "@/components/common/list-filter-bar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +25,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -46,6 +51,8 @@ export type ResourceRow = {
   pipelineCode: string | null;
   phaseType: PhaseType | null;
 };
+
+const FILTER_DEFAULTS = { business: "ALL" as "ALL" | string, type: "ALL" as "ALL" | ResourceType };
 
 function ResourceRowActions({
   resource,
@@ -119,6 +126,9 @@ export function ResourceLibraryTable({
   const [business, setBusiness] = useState<"ALL" | string>("ALL");
   const [type, setType] = useState<"ALL" | ResourceType>("ALL");
   const [preview, setPreview] = useState<ResourceRow | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const { draft, setDraft } = useFilterSheetDraft({ business, type }, filterOpen);
+  const activeFilterCount = countActiveFilters({ business, type }, FILTER_DEFAULTS);
 
   const businesses = useMemo(
     () =>
@@ -187,43 +197,91 @@ export function ResourceLibraryTable({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-52 flex-1">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search resources…"
-            className="pl-8"
-          />
-        </div>
-        <Select value={business} onValueChange={setBusiness}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Business" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All businesses</SelectItem>
-            {businesses.map((b) => (
-              <SelectItem key={b.id} value={b.id}>
-                {b.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={type} onValueChange={(v) => setType(v as "ALL" | ResourceType)}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All types</SelectItem>
-            {RESOURCE_TYPE_ORDER.map((t) => (
-              <SelectItem key={t} value={t}>
-                {RESOURCE_TYPE_LABELS[t]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <ListFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search resources…"
+        activeFilterCount={activeFilterCount}
+        filterOpen={filterOpen}
+        onFilterOpenChange={setFilterOpen}
+        onApplyFilters={() => {
+          setBusiness(draft.business);
+          setType(draft.type);
+        }}
+        onResetFilters={() => setDraft(FILTER_DEFAULTS)}
+        filterSheetContent={
+          <>
+            <FilterSheetSection label="Business">
+              <Select
+                value={draft.business}
+                onValueChange={(value) => setDraft((prev) => ({ ...prev, business: value }))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Business" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All businesses</SelectItem>
+                  {businesses.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FilterSheetSection>
+            <FilterSheetSection label="Type">
+              <Select
+                value={draft.type}
+                onValueChange={(value) =>
+                  setDraft((prev) => ({ ...prev, type: value as "ALL" | ResourceType }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All types</SelectItem>
+                  {RESOURCE_TYPE_ORDER.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {RESOURCE_TYPE_LABELS[t]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FilterSheetSection>
+          </>
+        }
+        desktopFilters={
+          <>
+            <Select value={business} onValueChange={setBusiness}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Business" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All businesses</SelectItem>
+                {businesses.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={type} onValueChange={(v) => setType(v as "ALL" | ResourceType)}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All types</SelectItem>
+                {RESOURCE_TYPE_ORDER.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {RESOURCE_TYPE_LABELS[t]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </>
+        }
+      />
       <DataTable
         columns={columns}
         data={filtered}

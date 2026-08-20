@@ -10,8 +10,15 @@ import {
   PlusIcon,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import {
+  countActiveFilters,
+  FilterChipGroup,
+  FilterSheetSection,
+  ListFilterBar,
+  useFilterSheetDraft,
+} from "@/components/common/list-filter-bar";
 import { MetricCard, METRIC_GRID_CLASS } from "@/components/common/metric-card";
+import { Button } from "@/components/ui/button";
 import { TaskList, type TaskRow } from "@/features/tasks/components/task-list";
 import { TaskFormDialog } from "@/features/tasks/components/task-form-dialog";
 import type { TaskFormInitial } from "@/features/tasks/components/task-form";
@@ -27,6 +34,8 @@ const FILTERS: { value: TaskFilter; label: string }[] = [
   { value: "due_today", label: "Due today" },
   { value: "completed", label: "Completed" },
 ];
+
+const FILTER_DEFAULTS = { filter: "all" as TaskFilter };
 
 export function PipelineTasksTab({
   pipelineId,
@@ -44,8 +53,11 @@ export function PipelineTasksTab({
   deactivated: boolean;
 }) {
   const [filter, setFilter] = useState<TaskFilter>("all");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const { draft, setDraft } = useFilterSheetDraft({ filter }, filterOpen);
   const metrics = useMemo(() => computeTaskMetrics(tasks), [tasks]);
   const filtered = useMemo(() => filterTasks(tasks, filter), [tasks, filter]);
+  const activeFilterCount = countActiveFilters({ filter }, FILTER_DEFAULTS);
 
   const taskPrefill: TaskFormInitial = {
     title: "",
@@ -88,32 +100,51 @@ export function PipelineTasksTab({
         />
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {FILTERS.map((item) => (
-            <Button
-              key={item.value}
-              variant={filter === item.value ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter(item.value)}
-            >
-              {item.label}
-            </Button>
-          ))}
-        </div>
-        {canWrite && !deactivated ? (
-          <TaskFormDialog
-            mode="create"
-            initial={taskPrefill}
-            trigger={
-              <Button size="sm">
-                <PlusIcon className="size-4" />
-                Add task
+      <ListFilterBar
+        showSearch={false}
+        activeFilterCount={activeFilterCount}
+        filterOpen={filterOpen}
+        onFilterOpenChange={setFilterOpen}
+        onApplyFilters={() => setFilter(draft.filter)}
+        onResetFilters={() => setDraft(FILTER_DEFAULTS)}
+        filterSheetContent={
+          <FilterSheetSection label="Status">
+            <FilterChipGroup
+              value={draft.filter}
+              onChange={(value) => setDraft({ filter: value })}
+              options={FILTERS}
+            />
+          </FilterSheetSection>
+        }
+        desktopFilters={
+          <div className="flex flex-wrap gap-2">
+            {FILTERS.map((item) => (
+              <Button
+                key={item.value}
+                variant={filter === item.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter(item.value)}
+              >
+                {item.label}
               </Button>
-            }
-          />
-        ) : null}
-      </div>
+            ))}
+          </div>
+        }
+        actions={
+          canWrite && !deactivated ? (
+            <TaskFormDialog
+              mode="create"
+              initial={taskPrefill}
+              trigger={
+                <Button size="sm">
+                  <PlusIcon className="size-4" />
+                  Add task
+                </Button>
+              }
+            />
+          ) : null
+        }
+      />
 
       <TaskList
         items={filtered}

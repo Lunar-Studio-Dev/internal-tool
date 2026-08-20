@@ -10,18 +10,23 @@ import {
   IndianRupeeIcon,
   PauseCircleIcon,
   PlusIcon,
-  SearchIcon,
   WorkflowIcon,
 } from "lucide-react";
 
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
 import { EmptyState } from "@/components/common/empty-state";
+import {
+  countActiveFilters,
+  FilterChipGroup,
+  FilterSheetSection,
+  ListFilterBar,
+  useFilterSheetDraft,
+} from "@/components/common/list-filter-bar";
 import { MetricCard, MetricCardSkeleton, METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import { QuerySection } from "@/components/common/query-gate";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -55,6 +60,18 @@ const KPI_FILTERS: { value: BusinessPipelineFilter; label: string }[] = [
   { value: "handed_off", label: "Handed off" },
 ];
 
+const CHIP_FILTER_OPTIONS: { value: BusinessPipelineFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  ...KPI_FILTERS,
+];
+
+const FILTER_DEFAULTS = {
+  chipFilter: "all" as BusinessPipelineFilter,
+  phase: "ALL" as "ALL" | PhaseType,
+  status: "ALL" as "ALL" | PipelineStatus,
+  owner: "ALL" as "ALL" | string,
+};
+
 export function BusinessPipelinesTab({
   businessId,
   canWrite,
@@ -68,6 +85,16 @@ export function BusinessPipelinesTab({
   const [status, setStatus] = useState<"ALL" | PipelineStatus>("ALL");
   const [owner, setOwner] = useState<"ALL" | string>("ALL");
   const [chipFilter, setChipFilter] = useState<BusinessPipelineFilter>("all");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const { draft, setDraft } = useFilterSheetDraft(
+    { chipFilter, phase, status, owner },
+    filterOpen,
+  );
+
+  const activeFilterCount = countActiveFilters(
+    { chipFilter, phase, status, owner },
+    FILTER_DEFAULTS,
+  );
 
   const pipelines: BusinessPipelineRow[] = useMemo(
     () =>
@@ -264,89 +291,169 @@ export function BusinessPipelinesTab({
             />
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={chipFilter === "all" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setChipFilter("all")}
-            >
-              All
-            </Button>
-            {KPI_FILTERS.map((item) => (
-              <Button
-                key={item.value}
-                variant={chipFilter === item.value ? "default" : "outline"}
-                size="sm"
-                onClick={() => setChipFilter(item.value)}
-              >
-                {item.label}
-              </Button>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-52 flex-1">
-              <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search code, opportunity, owner…"
-                className="pl-8"
-              />
-            </div>
-            <Select value={phase} onValueChange={(v) => setPhase(v as "ALL" | PhaseType)}>
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="Phase" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All phases</SelectItem>
-                {WORKABLE_PHASES.map((p) => (
-                  <SelectItem key={p} value={p}>
-                    {PHASE_LABELS[p]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={status} onValueChange={(v) => setStatus(v as "ALL" | PipelineStatus)}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All statuses</SelectItem>
-                {PIPELINE_STATUS_OPTIONS.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s.charAt(0) + s.slice(1).toLowerCase()}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {owners.length > 0 ? (
-              <Select value={owner} onValueChange={setOwner}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Owner" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All owners</SelectItem>
-                  {owners.map((name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : null}
-            {canWrite ? (
-              <PipelineCreateDialog
-                businessId={businessId}
-                trigger={
-                  <Button size="sm">
-                    <PlusIcon className="size-4" />
-                    New pipeline
+          <ListFilterBar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search code, opportunity, owner…"
+            activeFilterCount={activeFilterCount}
+            filterOpen={filterOpen}
+            onFilterOpenChange={setFilterOpen}
+            onApplyFilters={() => {
+              setChipFilter(draft.chipFilter);
+              setPhase(draft.phase);
+              setStatus(draft.status);
+              setOwner(draft.owner);
+            }}
+            onResetFilters={() => setDraft(FILTER_DEFAULTS)}
+            filterSheetContent={
+              <>
+                <FilterSheetSection label="Quick filter">
+                  <FilterChipGroup
+                    value={draft.chipFilter}
+                    onChange={(value) => setDraft((prev) => ({ ...prev, chipFilter: value }))}
+                    options={CHIP_FILTER_OPTIONS}
+                  />
+                </FilterSheetSection>
+                <FilterSheetSection label="Phase">
+                  <Select
+                    value={draft.phase}
+                    onValueChange={(v) =>
+                      setDraft((prev) => ({ ...prev, phase: v as "ALL" | PhaseType }))
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Phase" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All phases</SelectItem>
+                      {WORKABLE_PHASES.map((p) => (
+                        <SelectItem key={p} value={p}>
+                          {PHASE_LABELS[p]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FilterSheetSection>
+                <FilterSheetSection label="Status">
+                  <Select
+                    value={draft.status}
+                    onValueChange={(v) =>
+                      setDraft((prev) => ({ ...prev, status: v as "ALL" | PipelineStatus }))
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All statuses</SelectItem>
+                      {PIPELINE_STATUS_OPTIONS.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s.charAt(0) + s.slice(1).toLowerCase()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FilterSheetSection>
+                {owners.length > 0 ? (
+                  <FilterSheetSection label="Owner">
+                    <Select
+                      value={draft.owner}
+                      onValueChange={(value) => setDraft((prev) => ({ ...prev, owner: value }))}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Owner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All owners</SelectItem>
+                        {owners.map((name) => (
+                          <SelectItem key={name} value={name}>
+                            {name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FilterSheetSection>
+                ) : null}
+              </>
+            }
+            desktopFilters={
+              <>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={chipFilter === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setChipFilter("all")}
+                  >
+                    All
                   </Button>
-                }
-              />
-            ) : null}
-          </div>
+                  {KPI_FILTERS.map((item) => (
+                    <Button
+                      key={item.value}
+                      variant={chipFilter === item.value ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setChipFilter(item.value)}
+                    >
+                      {item.label}
+                    </Button>
+                  ))}
+                </div>
+                <Select value={phase} onValueChange={(v) => setPhase(v as "ALL" | PhaseType)}>
+                  <SelectTrigger className="w-44">
+                    <SelectValue placeholder="Phase" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All phases</SelectItem>
+                    {WORKABLE_PHASES.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {PHASE_LABELS[p]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={status} onValueChange={(v) => setStatus(v as "ALL" | PipelineStatus)}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All statuses</SelectItem>
+                    {PIPELINE_STATUS_OPTIONS.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s.charAt(0) + s.slice(1).toLowerCase()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {owners.length > 0 ? (
+                  <Select value={owner} onValueChange={setOwner}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Owner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All owners</SelectItem>
+                      {owners.map((name) => (
+                        <SelectItem key={name} value={name}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : null}
+              </>
+            }
+            actions={
+              canWrite ? (
+                <PipelineCreateDialog
+                  businessId={businessId}
+                  trigger={
+                    <Button size="sm">
+                      <PlusIcon className="size-4" />
+                      New pipeline
+                    </Button>
+                  }
+                />
+              ) : null
+            }
+          />
 
           <DataTable
             columns={columns}

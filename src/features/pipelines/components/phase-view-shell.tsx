@@ -37,7 +37,7 @@ export function PhaseViewShell({
         {phaseStatus ? <StatusBadge kind={phaseStatus} /> : null}
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
           <div className="flex flex-col gap-0.5">
             <span className="text-xs text-muted-foreground">Started</span>
             <span className="text-sm">

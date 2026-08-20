@@ -70,7 +70,7 @@ export function TaskDetail({ id }: { id: string }) {
                 <CardTitle className="text-base">Details</CardTitle>
                 <StatusBadge kind={task.priority} />
               </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
+              <CardContent className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 md:grid-cols-3">
                 <Info label="Status" value={TASK_STATUS_LABELS[task.status]} />
                 <Info label="Assigned to" value={task.assigneeName ?? "Unassigned"} />
                 <Info

@@ -7,6 +7,7 @@ import {
   CalendarClockIcon,
   ListTodoIcon,
   WalletIcon,
+  AlertCircleIcon,
 } from "lucide-react";
 
 import {
@@ -14,7 +15,7 @@ import {
   MetricCardSkeleton,
   METRIC_GRID_CLASS,
 } from "@/components/common/metric-card";
-import { QuerySection } from "@/components/common/query-gate";
+import { EmptyState } from "@/components/common/empty-state";
 import { businessQueries } from "@/features/businesses/api";
 import { computeBusinessOverviewKpis } from "@/features/businesses/business-overview-metrics";
 import type { FollowUpRow } from "@/features/followups/components/followup-list";
@@ -73,55 +74,73 @@ export function BusinessOverviewKpis({
 
   const opsPending = followUpsQuery.isPending || tasksQuery.isPending;
   const opsError = followUpsQuery.isError || tasksQuery.isError;
-  const opsErrorObj = followUpsQuery.error ?? tasksQuery.error;
+  const financialsPending = financialsQuery.isPending;
+  const financialsError = financialsQuery.isError;
+
+  if (opsPending || financialsPending) {
+    return (
+      <div className={METRIC_GRID_CLASS}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <MetricCardSkeleton key={i} />
+        ))}
+      </div>
+    );
+  }
+
+  if (opsError && financialsError) {
+    return (
+      <EmptyState
+        icon={AlertCircleIcon}
+        title="Could not load overview metrics"
+        description={
+          followUpsQuery.error?.message ??
+          tasksQuery.error?.message ??
+          financialsQuery.error?.message ??
+          "Something went wrong."
+        }
+      />
+    );
+  }
 
   return (
     <div className={METRIC_GRID_CLASS}>
-      <QuerySection
-        isPending={opsPending}
-        isError={opsError}
-        error={opsErrorObj}
-        skeleton={
-          <>
-            <MetricCardSkeleton />
-            <MetricCardSkeleton />
-            <MetricCardSkeleton />
-          </>
-        }
-        errorTitle="Could not load overview metrics"
-      >
-        <MetricCard
-          icon={CalendarCheckIcon}
-          label="Recent follow-ups"
-          value={kpis.recentFollowUps.count}
-          hint={kpis.recentFollowUps.hint}
-          onClick={onOpenActivity}
-        />
-        <MetricCard
-          icon={CalendarClockIcon}
-          label="Upcoming follow-ups"
-          value={kpis.upcomingFollowUps.count}
-          hint={kpis.upcomingFollowUps.hint}
-          tone={kpis.upcomingFollowUps.overdue > 0 ? "warning" : "default"}
-          onClick={onOpenActivity}
-        />
-        <MetricCard
-          icon={ListTodoIcon}
-          label="Pending tasks"
-          value={kpis.pendingTasks.count}
-          hint={kpis.pendingTasks.hint}
-          tone={kpis.pendingTasks.overdue > 0 ? "warning" : "default"}
-          onClick={onOpenTasks}
-        />
-      </QuerySection>
+      {opsError ? (
+        <div className="col-span-2 flex items-center rounded-lg border border-dashed p-4 text-sm text-muted-foreground xl:col-span-3">
+          Could not load follow-up and task metrics.
+        </div>
+      ) : (
+        <>
+          <MetricCard
+            icon={CalendarCheckIcon}
+            label="Recent follow-ups"
+            value={kpis.recentFollowUps.count}
+            hint={kpis.recentFollowUps.hint}
+            onClick={onOpenActivity}
+          />
+          <MetricCard
+            icon={CalendarClockIcon}
+            label="Upcoming follow-ups"
+            value={kpis.upcomingFollowUps.count}
+            hint={kpis.upcomingFollowUps.hint}
+            tone={kpis.upcomingFollowUps.overdue > 0 ? "warning" : "default"}
+            onClick={onOpenActivity}
+          />
+          <MetricCard
+            icon={ListTodoIcon}
+            label="Pending tasks"
+            value={kpis.pendingTasks.count}
+            hint={kpis.pendingTasks.hint}
+            tone={kpis.pendingTasks.overdue > 0 ? "warning" : "default"}
+            onClick={onOpenTasks}
+          />
+        </>
+      )}
 
-      <QuerySection
-        isPending={financialsQuery.isPending}
-        isError={financialsQuery.isError}
-        error={financialsQuery.error}
-        skeleton={<MetricCardSkeleton />}
-        errorTitle="Could not load revenue"
-      >
+      {financialsError ? (
+        <div className="flex items-center rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          Could not load revenue.
+        </div>
+      ) : (
         <MetricCard
           icon={WalletIcon}
           label="Total revenue"
@@ -133,7 +152,7 @@ export function BusinessOverviewKpis({
           }
           onClick={onOpenFinancials}
         />
-      </QuerySection>
+      )}
     </div>
   );
 }

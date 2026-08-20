@@ -11,6 +11,13 @@ import {
   PlusIcon,
 } from "lucide-react";
 
+import {
+  countActiveFilters,
+  FilterChipGroup,
+  FilterSheetSection,
+  ListFilterBar,
+  useFilterSheetDraft,
+} from "@/components/common/list-filter-bar";
 import { MetricCard, MetricCardSkeleton, METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import { QuerySection } from "@/components/common/query-gate";
 import { Button } from "@/components/ui/button";
@@ -37,6 +44,8 @@ const FILTERS: { value: TaskFilter; label: string }[] = [
   { value: "completed", label: "Completed" },
 ];
 
+const FILTER_DEFAULTS = { filter: "all" as TaskFilter, pipelineFilter: "ALL" as "ALL" | string };
+
 export function BusinessTasksTab({
   businessId,
   canWrite,
@@ -48,6 +57,8 @@ export function BusinessTasksTab({
   const pipelinesQuery = useQuery(businessQueries.pipelines(businessId));
   const [filter, setFilter] = useState<TaskFilter>("all");
   const [pipelineFilter, setPipelineFilter] = useState<"ALL" | string>("ALL");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const { draft, setDraft } = useFilterSheetDraft({ filter, pipelineFilter }, filterOpen);
 
   const taskRows: TaskRow[] = useMemo(
     () =>
@@ -72,6 +83,7 @@ export function BusinessTasksTab({
 
   const metrics = useMemo(() => computeTaskMetrics(scopedTasks), [scopedTasks]);
   const filtered = useMemo(() => filterTasks(scopedTasks, filter), [scopedTasks, filter]);
+  const activeFilterCount = countActiveFilters({ filter, pipelineFilter }, FILTER_DEFAULTS);
 
   const taskPrefill: TaskFormInitial = {
     title: "",
@@ -86,6 +98,23 @@ export function BusinessTasksTab({
   };
 
   const pipelineOptions = pipelinesQuery.data ?? [];
+
+  const pipelineSelect =
+    pipelineOptions.length > 0 ? (
+      <Select value={pipelineFilter} onValueChange={setPipelineFilter}>
+        <SelectTrigger className="w-44">
+          <SelectValue placeholder="Pipeline" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="ALL">All pipelines</SelectItem>
+          {pipelineOptions.map((p) => (
+            <SelectItem key={p.id} value={p.id}>
+              {p.code}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    ) : null;
 
   return (
     <QuerySection
@@ -131,36 +160,68 @@ export function BusinessTasksTab({
           />
         </div>
 
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap gap-2">
-            {FILTERS.map((item) => (
-              <Button
-                key={item.value}
-                variant={filter === item.value ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFilter(item.value)}
-              >
-                {item.label}
-              </Button>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {pipelineOptions.length > 0 ? (
-              <Select value={pipelineFilter} onValueChange={setPipelineFilter}>
-                <SelectTrigger className="w-44">
-                  <SelectValue placeholder="Pipeline" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All pipelines</SelectItem>
-                  {pipelineOptions.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.code}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : null}
-            {canWrite ? (
+        <ListFilterBar
+          showSearch={false}
+          activeFilterCount={activeFilterCount}
+          filterOpen={filterOpen}
+          onFilterOpenChange={setFilterOpen}
+          onApplyFilters={() => {
+            setFilter(draft.filter);
+            setPipelineFilter(draft.pipelineFilter);
+          }}
+          onResetFilters={() => setDraft(FILTER_DEFAULTS)}
+          filterSheetContent={
+            <>
+              <FilterSheetSection label="Status">
+                <FilterChipGroup
+                  value={draft.filter}
+                  onChange={(value) => setDraft((prev) => ({ ...prev, filter: value }))}
+                  options={FILTERS}
+                />
+              </FilterSheetSection>
+              {pipelineOptions.length > 0 ? (
+                <FilterSheetSection label="Pipeline">
+                  <Select
+                    value={draft.pipelineFilter}
+                    onValueChange={(value) =>
+                      setDraft((prev) => ({ ...prev, pipelineFilter: value }))
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Pipeline" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All pipelines</SelectItem>
+                      {pipelineOptions.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.code}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FilterSheetSection>
+              ) : null}
+            </>
+          }
+          desktopFilters={
+            <>
+              <div className="flex flex-wrap gap-2">
+                {FILTERS.map((item) => (
+                  <Button
+                    key={item.value}
+                    variant={filter === item.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setFilter(item.value)}
+                  >
+                    {item.label}
+                  </Button>
+                ))}
+              </div>
+              {pipelineSelect}
+            </>
+          }
+          actions={
+            canWrite ? (
               <TaskFormDialog
                 mode="create"
                 initial={taskPrefill}
@@ -171,9 +232,9 @@ export function BusinessTasksTab({
                   </Button>
                 }
               />
-            ) : null}
-          </div>
-        </div>
+            ) : null
+          }
+        />
 
         <TaskList
           items={filtered}

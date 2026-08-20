@@ -8,12 +8,17 @@ import {
   CheckCircle2Icon,
   PauseCircleIcon,
   PlusIcon,
-  SearchIcon,
   WorkflowIcon,
 } from "lucide-react";
 
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
-import { MetricCard, MetricCardSkeleton, METRIC_GRID_CLASS } from "@/components/common/metric-card";
+import {
+  countActiveFilters,
+  FilterSheetSection,
+  ListFilterBar,
+  useFilterSheetDraft,
+} from "@/components/common/list-filter-bar";
+import { MetricCard, METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import { QueryGate } from "@/components/common/query-gate";
 import { TablePageSkeleton } from "@/components/common/skeletons";
 import { StatusBadge } from "@/components/common/status-badge";
@@ -54,6 +59,22 @@ export type PipelineRow = {
   createdAt: string;
 };
 
+type PipelineFilters = {
+  phase: "ALL" | PhaseType;
+  status: "ALL" | PipelineStatus;
+  owner: "ALL" | string;
+  fromDate: string;
+  toDate: string;
+};
+
+const FILTER_DEFAULTS: PipelineFilters = {
+  phase: "ALL",
+  status: "ALL",
+  owner: "ALL",
+  fromDate: "",
+  toDate: "",
+};
+
 export function PipelineTable() {
   const query = useQuery(pipelineQueries.list());
   const canWrite = useCan("pipeline:write");
@@ -64,6 +85,11 @@ export function PipelineTable() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [listFilter, setListFilter] = useState<PipelineListFilter>("all");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const { draft, setDraft } = useFilterSheetDraft(
+    { phase, status, owner, fromDate, toDate },
+    filterOpen,
+  );
 
   const pipelines: PipelineRow[] = useMemo(
     () =>
@@ -87,6 +113,10 @@ export function PipelineTable() {
   );
 
   const metrics = useMemo(() => computePipelineListMetrics(pipelines), [pipelines]);
+  const activeFilterCount = countActiveFilters(
+    { phase, status, owner, fromDate, toDate },
+    FILTER_DEFAULTS,
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -143,6 +173,174 @@ export function PipelineTable() {
     },
   ];
 
+  function applyDraftFilters() {
+    setPhase(draft.phase);
+    setStatus(draft.status);
+    setOwner(draft.owner);
+    setFromDate(draft.fromDate);
+    setToDate(draft.toDate);
+    setListFilter("all");
+  }
+
+  const filterFields = (
+    <>
+      <FilterSheetSection label="Phase">
+        <Select
+          value={draft.phase}
+          onValueChange={(v) => setDraft((prev) => ({ ...prev, phase: v as "ALL" | PhaseType }))}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Phase" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All phases</SelectItem>
+            {WORKABLE_PHASES.map((p) => (
+              <SelectItem key={p} value={p}>
+                {PHASE_LABELS[p]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterSheetSection>
+
+      <FilterSheetSection label="Status">
+        <Select
+          value={draft.status}
+          onValueChange={(v) =>
+            setDraft((prev) => ({ ...prev, status: v as "ALL" | PipelineStatus }))
+          }
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All statuses</SelectItem>
+            {PIPELINE_STATUS_OPTIONS.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s.charAt(0) + s.slice(1).toLowerCase()}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterSheetSection>
+
+      {owners.length > 0 ? (
+        <FilterSheetSection label="Owner">
+          <Select
+            value={draft.owner}
+            onValueChange={(value) => setDraft((prev) => ({ ...prev, owner: value }))}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Owner" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All owners</SelectItem>
+              {owners.map((name) => (
+                <SelectItem key={name} value={name}>
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterSheetSection>
+      ) : null}
+
+      <FilterSheetSection label="Created date range">
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            type="date"
+            value={draft.fromDate}
+            onChange={(e) => setDraft((prev) => ({ ...prev, fromDate: e.target.value }))}
+            aria-label="Created from"
+          />
+          <Input
+            type="date"
+            value={draft.toDate}
+            onChange={(e) => setDraft((prev) => ({ ...prev, toDate: e.target.value }))}
+            aria-label="Created to"
+          />
+        </div>
+      </FilterSheetSection>
+    </>
+  );
+
+  const desktopFilters = (
+    <>
+      <Select value={phase} onValueChange={(v) => setPhase(v as "ALL" | PhaseType)}>
+        <SelectTrigger className="w-44">
+          <SelectValue placeholder="Phase" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="ALL">All phases</SelectItem>
+          {WORKABLE_PHASES.map((p) => (
+            <SelectItem key={p} value={p}>
+              {PHASE_LABELS[p]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
+        value={status}
+        onValueChange={(v) => {
+          setStatus(v as "ALL" | PipelineStatus);
+          setListFilter("all");
+        }}
+      >
+        <SelectTrigger className="w-36">
+          <SelectValue placeholder="Status" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="ALL">All statuses</SelectItem>
+          {PIPELINE_STATUS_OPTIONS.map((s) => (
+            <SelectItem key={s} value={s}>
+              {s.charAt(0) + s.slice(1).toLowerCase()}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {owners.length > 0 ? (
+        <Select value={owner} onValueChange={setOwner}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Owner" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All owners</SelectItem>
+            {owners.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : null}
+      <Input
+        type="date"
+        value={fromDate}
+        onChange={(e) => setFromDate(e.target.value)}
+        className="w-40"
+        aria-label="Created from"
+      />
+      <Input
+        type="date"
+        value={toDate}
+        onChange={(e) => setToDate(e.target.value)}
+        className="w-40"
+        aria-label="Created to"
+      />
+    </>
+  );
+
+  const createAction = canWrite ? (
+    <PipelineCreateDialog
+      trigger={
+        <Button>
+          <PlusIcon className="size-4" />
+          New Pipeline
+        </Button>
+      }
+    />
+  ) : null;
+
   return (
     <QueryGate
       isPending={query.isPending}
@@ -196,88 +394,20 @@ export function PipelineTable() {
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-52 flex-1">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search code, business, opportunity…"
-            className="pl-8"
-          />
-        </div>
-        <Select value={phase} onValueChange={(v) => setPhase(v as "ALL" | PhaseType)}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Phase" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All phases</SelectItem>
-            {WORKABLE_PHASES.map((p) => (
-              <SelectItem key={p} value={p}>
-                {PHASE_LABELS[p]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={status}
-          onValueChange={(v) => {
-            setStatus(v as "ALL" | PipelineStatus);
-            setListFilter("all");
-          }}
-        >
-          <SelectTrigger className="w-36">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All statuses</SelectItem>
-            {PIPELINE_STATUS_OPTIONS.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s.charAt(0) + s.slice(1).toLowerCase()}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {owners.length > 0 ? (
-          <Select value={owner} onValueChange={setOwner}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Owner" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All owners</SelectItem>
-              {owners.map((name) => (
-                <SelectItem key={name} value={name}>
-                  {name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : null}
-        <Input
-          type="date"
-          value={fromDate}
-          onChange={(e) => setFromDate(e.target.value)}
-          className="w-40"
-          aria-label="Created from"
-        />
-        <Input
-          type="date"
-          value={toDate}
-          onChange={(e) => setToDate(e.target.value)}
-          className="w-40"
-          aria-label="Created to"
-        />
-        {canWrite ? (
-          <PipelineCreateDialog
-            trigger={
-              <Button>
-                <PlusIcon className="size-4" />
-                New Pipeline
-              </Button>
-            }
-          />
-        ) : null}
-      </div>
+      <ListFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search code, business, opportunity…"
+        activeFilterCount={activeFilterCount}
+        filterOpen={filterOpen}
+        onFilterOpenChange={setFilterOpen}
+        onApplyFilters={applyDraftFilters}
+        onResetFilters={() => setDraft(FILTER_DEFAULTS)}
+        filterSheetContent={filterFields}
+        desktopFilters={desktopFilters}
+        actions={createAction}
+      />
+
       <DataTable
         columns={columns}
         data={filtered}

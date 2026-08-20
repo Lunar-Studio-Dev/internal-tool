@@ -6,16 +6,20 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Building2Icon,
   PlusIcon,
-  SearchIcon,
   WorkflowIcon,
 } from "lucide-react";
 
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
+import {
+  countActiveFilters,
+  FilterSheetSection,
+  ListFilterBar,
+  useFilterSheetDraft,
+} from "@/components/common/list-filter-bar";
 import { MetricCard, METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import { QueryGate } from "@/components/common/query-gate";
 import { TablePageSkeleton } from "@/components/common/skeletons";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -42,12 +46,16 @@ export type BusinessRow = {
   activePipelineCount: number;
 };
 
+const FILTER_DEFAULTS = { industry: "ALL" as const };
+
 export function BusinessTable() {
   const query = useQuery(businessQueries.list());
   const canWrite = useCan("business:write");
   const [search, setSearch] = useState("");
   const [industry, setIndustry] = useState<"ALL" | string>("ALL");
   const [listFilter, setListFilter] = useState<BusinessListFilter>("all");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const { draft, setDraft } = useFilterSheetDraft({ industry }, filterOpen);
 
   const businesses: BusinessRow[] = useMemo(
     () =>
@@ -69,6 +77,7 @@ export function BusinessTable() {
   );
 
   const metrics = useMemo(() => computeBusinessListMetrics(businesses), [businesses]);
+  const activeFilterCount = countActiveFilters({ industry }, FILTER_DEFAULTS);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -134,6 +143,33 @@ export function BusinessTable() {
     },
   ];
 
+  const industrySelect = (
+    <Select value={industry} onValueChange={setIndustry}>
+      <SelectTrigger className="w-48">
+        <SelectValue placeholder="Industry" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="ALL">All industries</SelectItem>
+        {industries.map((value) => (
+          <SelectItem key={value} value={value}>
+            {value}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  const createAction = canWrite ? (
+    <BusinessCreateDialog
+      trigger={
+        <Button>
+          <PlusIcon className="size-4" />
+          New Business
+        </Button>
+      }
+    />
+  ) : null;
+
   return (
     <QueryGate
       isPending={query.isPending}
@@ -173,40 +209,39 @@ export function BusinessTable() {
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-52 flex-1">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name, website, or contact…"
-            className="pl-8"
-          />
-        </div>
-        <Select value={industry} onValueChange={setIndustry}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Industry" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All industries</SelectItem>
-            {industries.map((value) => (
-              <SelectItem key={value} value={value}>
-                {value}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {canWrite ? (
-          <BusinessCreateDialog
-            trigger={
-              <Button>
-                <PlusIcon className="size-4" />
-                New Business
-              </Button>
-            }
-          />
-        ) : null}
-      </div>
+      <ListFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search name, website, or contact…"
+        activeFilterCount={activeFilterCount}
+        filterOpen={filterOpen}
+        onFilterOpenChange={setFilterOpen}
+        onApplyFilters={() => setIndustry(draft.industry)}
+        onResetFilters={() => setDraft(FILTER_DEFAULTS)}
+        filterSheetContent={
+          <FilterSheetSection label="Industry">
+            <Select
+              value={draft.industry}
+              onValueChange={(value) => setDraft({ industry: value })}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Industry" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All industries</SelectItem>
+                {industries.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterSheetSection>
+        }
+        desktopFilters={industrySelect}
+        actions={createAction}
+      />
+
       <DataTable
         columns={columns}
         data={filtered}

@@ -123,7 +123,7 @@ export function BusinessDetail({ id }: { id: string }) {
                     <CardHeader>
                       <CardTitle className="text-base">Business information</CardTitle>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-4">
+                    <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <InfoRow label="Website" value={business.website} />
                       <InfoRow label="Email" value={business.email} />
                       <InfoRow label="Phone" value={business.phone} />

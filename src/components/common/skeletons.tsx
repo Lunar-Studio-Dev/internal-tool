@@ -119,7 +119,7 @@ export function DetailCardsSkeleton() {
         <CardHeader>
           <Skeleton className="h-5 w-40" />
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex flex-col gap-1.5">
               <Skeleton className="h-3 w-16" />
@@ -194,7 +194,7 @@ export function BusinessDetailSkeleton() {
             <CardHeader>
               <Skeleton className="h-5 w-40" />
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="flex flex-col gap-1.5">
                   <Skeleton className="h-3 w-16" />

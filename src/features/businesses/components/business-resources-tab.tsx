@@ -8,13 +8,18 @@ import {
   ImageIcon,
   LinkIcon,
   PlusIcon,
-  SearchIcon,
 } from "lucide-react";
 
+import {
+  countActiveFilters,
+  FilterChipGroup,
+  FilterSheetSection,
+  ListFilterBar,
+  useFilterSheetDraft,
+} from "@/components/common/list-filter-bar";
 import { MetricCard, MetricCardSkeleton, METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import { QuerySection } from "@/components/common/query-gate";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -32,6 +37,11 @@ import type { ResourceFilter } from "@/features/resources/resource-metrics";
 import { ResourceList, type ResourceListItem } from "@/features/resources/components/resource-list";
 import { UploadDialog } from "@/features/resources/components/upload-dialog";
 
+const FILTER_DEFAULTS = {
+  filter: "all" as ResourceFilter,
+  pipelineFilter: "ALL" as "ALL" | string,
+};
+
 export function BusinessResourcesTab({
   businessId,
   canWrite,
@@ -44,6 +54,8 @@ export function BusinessResourcesTab({
   const [filter, setFilter] = useState<ResourceFilter>("all");
   const [pipelineFilter, setPipelineFilter] = useState<"ALL" | string>("ALL");
   const [search, setSearch] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const { draft, setDraft } = useFilterSheetDraft({ filter, pipelineFilter }, filterOpen);
 
   const resources: ResourceListItem[] = useMemo(
     () =>
@@ -87,6 +99,24 @@ export function BusinessResourcesTab({
   }, [resources, filter, pipelineFilter, search]);
 
   const pipelineOptions = pipelinesQuery.data ?? [];
+  const activeFilterCount = countActiveFilters({ filter, pipelineFilter }, FILTER_DEFAULTS);
+
+  const pipelineSelect =
+    pipelineOptions.length > 0 ? (
+      <Select value={pipelineFilter} onValueChange={setPipelineFilter}>
+        <SelectTrigger className="w-44">
+          <SelectValue placeholder="Pipeline" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="ALL">All pipelines</SelectItem>
+          {pipelineOptions.map((p) => (
+            <SelectItem key={p.id} value={p.id}>
+              {p.code}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    ) : null;
 
   return (
     <QuerySection
@@ -126,48 +156,70 @@ export function BusinessResourcesTab({
           />
         </div>
 
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap gap-2">
-            {BUSINESS_RESOURCE_FILTERS.map((item) => (
-              <Button
-                key={item.value}
-                variant={filter === item.value ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFilter(item.value)}
-              >
-                {item.label}
-              </Button>
-            ))}
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-1 flex-wrap items-center gap-2">
-              <div className="relative min-w-52 flex-1">
-                <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search resources…"
-                  className="pl-8"
+        <ListFilterBar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search resources…"
+          activeFilterCount={activeFilterCount}
+          filterOpen={filterOpen}
+          onFilterOpenChange={setFilterOpen}
+          onApplyFilters={() => {
+            setFilter(draft.filter);
+            setPipelineFilter(draft.pipelineFilter);
+          }}
+          onResetFilters={() => setDraft(FILTER_DEFAULTS)}
+          filterSheetContent={
+            <>
+              <FilterSheetSection label="Type">
+                <FilterChipGroup
+                  value={draft.filter}
+                  onChange={(value) => setDraft((prev) => ({ ...prev, filter: value }))}
+                  options={BUSINESS_RESOURCE_FILTERS}
                 />
-              </div>
+              </FilterSheetSection>
               {pipelineOptions.length > 0 ? (
-                <Select value={pipelineFilter} onValueChange={setPipelineFilter}>
-                  <SelectTrigger className="w-44">
-                    <SelectValue placeholder="Pipeline" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All pipelines</SelectItem>
-                    {pipelineOptions.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.code}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FilterSheetSection label="Pipeline">
+                  <Select
+                    value={draft.pipelineFilter}
+                    onValueChange={(value) =>
+                      setDraft((prev) => ({ ...prev, pipelineFilter: value }))
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Pipeline" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All pipelines</SelectItem>
+                      {pipelineOptions.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.code}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FilterSheetSection>
               ) : null}
-            </div>
-            {canWrite ? (
+            </>
+          }
+          desktopFilters={
+            <>
+              <div className="flex flex-wrap gap-2">
+                {BUSINESS_RESOURCE_FILTERS.map((item) => (
+                  <Button
+                    key={item.value}
+                    variant={filter === item.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setFilter(item.value)}
+                  >
+                    {item.label}
+                  </Button>
+                ))}
+              </div>
+              {pipelineSelect}
+            </>
+          }
+          actions={
+            canWrite ? (
               <UploadDialog
                 prefill={{
                   businessId,
@@ -180,9 +232,9 @@ export function BusinessResourcesTab({
                   </Button>
                 }
               />
-            ) : null}
-          </div>
-        </div>
+            ) : null
+          }
+        />
 
         <ResourceList
           items={filtered}

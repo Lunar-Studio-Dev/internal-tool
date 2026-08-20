@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { ArrowRightIcon, CreditCardIcon, PlusIcon } from "lucide-react";
 
 import { EmptyState } from "@/components/common/empty-state";
-import { InfoRow } from "@/components/common/info-row";
+import { InfoMetricCell } from "@/components/common/info-row";
 import { METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -71,10 +71,16 @@ export function PaymentPendingPanel({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className={METRIC_GRID_CLASS}>
-            <InfoRow label="Contract total" value={formatINR(status.contractTotalPaise)} />
-            <InfoRow label="Received" value={formatINR(status.receivedPaise)} />
-            <InfoRow label="Initial remaining" value={formatINR(status.initialRemainingPaise)} />
-            <InfoRow label="Contract remaining" value={formatINR(status.contractRemainingPaise)} />
+            <InfoMetricCell label="Contract total" value={formatINR(status.contractTotalPaise)} />
+            <InfoMetricCell label="Received" value={formatINR(status.receivedPaise)} />
+            <InfoMetricCell
+              label="Initial remaining"
+              value={formatINR(status.initialRemainingPaise)}
+            />
+            <InfoMetricCell
+              label="Contract remaining"
+              value={formatINR(status.contractRemainingPaise)}
+            />
           </div>
 
           <div className="flex flex-wrap gap-2">

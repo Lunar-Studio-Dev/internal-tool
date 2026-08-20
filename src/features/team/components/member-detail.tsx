@@ -79,7 +79,7 @@ export function MemberDetailView({ id }: { id: string }) {
                 <CardTitle className="text-base">Workload</CardTitle>
                 <CardDescription>Live counts from assigned work.</CardDescription>
               </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-4">
+              <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {(
                   [
                     ["Active Tasks", workload?.counts.activeTasks ?? "—"],

@@ -9,6 +9,13 @@ import {
   PlusIcon,
 } from "lucide-react";
 
+import {
+  countActiveFilters,
+  FilterChipGroup,
+  FilterSheetSection,
+  ListFilterBar,
+  useFilterSheetDraft,
+} from "@/components/common/list-filter-bar";
 import { MetricCard, METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import { Button } from "@/components/ui/button";
 import { UploadDialog } from "@/features/resources/components/upload-dialog";
@@ -19,7 +26,6 @@ import {
   type ResourceFilter,
 } from "@/features/resources/resource-metrics";
 import type { PhaseType } from "@/generated/prisma/enums";
-import { cn } from "@/lib/utils";
 
 const FILTERS: { value: ResourceFilter; label: string }[] = [
   { value: "all", label: "All" },
@@ -32,6 +38,8 @@ const FILTERS: { value: ResourceFilter; label: string }[] = [
   { value: "meeting_notes", label: "Meeting notes" },
   { value: "other", label: "Other" },
 ];
+
+const FILTER_DEFAULTS = { filter: "all" as ResourceFilter };
 
 export function PipelineResourcesTab({
   pipelineId,
@@ -49,6 +57,8 @@ export function PipelineResourcesTab({
   deactivated: boolean;
 }) {
   const [filter, setFilter] = useState<ResourceFilter>("all");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const { draft, setDraft } = useFilterSheetDraft({ filter }, filterOpen);
   const metrics = useMemo(
     () => computeResourceMetrics(resources, currentPhase),
     [resources, currentPhase],
@@ -57,6 +67,7 @@ export function PipelineResourcesTab({
     () => filterResources(resources, filter, currentPhase),
     [resources, filter, currentPhase],
   );
+  const activeFilterCount = countActiveFilters({ filter }, FILTER_DEFAULTS);
 
   return (
     <div className="flex flex-col gap-4">
@@ -77,31 +88,50 @@ export function PipelineResourcesTab({
         <MetricCard icon={ImageIcon} label="Images" value={metrics.images} />
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {FILTERS.map((item) => (
-            <Button
-              key={item.value}
-              variant={filter === item.value ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter(item.value)}
-            >
-              {item.label}
-            </Button>
-          ))}
-        </div>
-        {canWrite && !deactivated ? (
-          <UploadDialog
-            prefill={{ businessId, pipelineId, phaseType: currentPhase }}
-            trigger={
-              <Button size="sm" className={cn("shrink-0")}>
-                <PlusIcon className="size-4" />
-                Add resource
+      <ListFilterBar
+        showSearch={false}
+        activeFilterCount={activeFilterCount}
+        filterOpen={filterOpen}
+        onFilterOpenChange={setFilterOpen}
+        onApplyFilters={() => setFilter(draft.filter)}
+        onResetFilters={() => setDraft(FILTER_DEFAULTS)}
+        filterSheetContent={
+          <FilterSheetSection label="Type">
+            <FilterChipGroup
+              value={draft.filter}
+              onChange={(value) => setDraft({ filter: value })}
+              options={FILTERS}
+            />
+          </FilterSheetSection>
+        }
+        desktopFilters={
+          <div className="flex flex-wrap gap-2">
+            {FILTERS.map((item) => (
+              <Button
+                key={item.value}
+                variant={filter === item.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter(item.value)}
+              >
+                {item.label}
               </Button>
-            }
-          />
-        ) : null}
-      </div>
+            ))}
+          </div>
+        }
+        actions={
+          canWrite && !deactivated ? (
+            <UploadDialog
+              prefill={{ businessId, pipelineId, phaseType: currentPhase }}
+              trigger={
+                <Button size="sm" className="shrink-0">
+                  <PlusIcon className="size-4" />
+                  Add resource
+                </Button>
+              }
+            />
+          ) : null
+        }
+      />
 
       <ResourceList
         items={filtered}
