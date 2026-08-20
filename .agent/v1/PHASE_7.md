@@ -1,6 +1,6 @@
 # Phase 7 — Six-Phase Workflow: Contact Info → Quotation
 
-> Depends on PHASE_5 (engine) and PHASE_6 (tasks/resources). Fills in the actual content and outcome screens for the workable phases. Introduces versioned quotations and the AI Gateway assist.
+> Depends on PHASE_5 (engine) and PHASE_6 (tasks/resources). Fills in the actual content and outcome screens for the workable phases. Introduces versioned quotations.
 
 ## 1. Objective
 
@@ -13,7 +13,6 @@ Implement the content, capture forms, and promote/deactivate outcomes for phases
 - Phase ③ Business Understanding (model, processes, pain points, opportunities) — WF-20.
 - Phase ④ Requirement Meet + Questionnaire form (template, sections, progress) — WF-21, WF-22.
 - Phase ⑤ Quotation Meet (versions V1..Vn, current/superseded, client decision Pending/Accepted/Rejected/Later) + Create Quotation (line items, initial payment, terms, validity) — WF-23, WF-24.
-- AI assist (Vercel AI Gateway): draft a requirement questionnaire / summarize understanding — optional, behind a button.
 - Wire Promote transitions to the PHASE_5 state machine; "Accepted → Payment Pending" hands to PHASE_8.
 
 ## 3. Requirements
@@ -30,7 +29,6 @@ Implement the content, capture forms, and promote/deactivate outcomes for phases
 ### Non-Functional
 - Phase payload writes are transactional and audited; promoting requires the phase to be ACTIVE.
 - Quotation versioning is append-only; the "current" pointer moves, rows are immutable once superseded.
-- AI assist is optional, rate-limited, and never blocks manual entry; output is editable draft text only.
 
 ## 4. End-to-End User Flow
 
@@ -147,7 +145,7 @@ model PipelineDecision {               // current client decision at Quotation
 }
 ```
 
-### Services & AI assist
+### Services
 ```text
 src/features/phases/
 ├─ components/ contact-info  discovery  understanding  requirement  questionnaire  quotation  create-quotation  decision-panel
@@ -157,12 +155,6 @@ src/features/phases/
 ├─ hooks/      use-phase.ts  use-quotations.ts
 └─ schemas/    understanding.schema.ts  requirement.schema.ts  quotation.schema.ts
 ```
-```ts
-// src/lib/ai.ts — Vercel AI Gateway (single credential; model swap = string change)
-import { generateText } from "ai";
-export const draftQuestionnaire = (ctx: string) =>
-  generateText({ model: "google/gemini-3-flash", prompt: buildPrompt(ctx) }); // AI_GATEWAY_API_KEY
-```
 - Accept flow does NOT promote; it creates/returns a Payment-Pending context consumed by PHASE_8.
 - Quotation "Upload New Version" or "Create" wraps in a transaction: new row `CURRENT`, previous `CURRENT`→`SUPERSEDED`; optional PDF stored as a Resource (PHASE_6/R2).
 
@@ -170,7 +162,7 @@ export const draftQuestionnaire = (ctx: string) =>
 
 - All five workable phase screens capture and persist their payloads; Promote uses the PHASE_5 engine and moves to the next phase.
 - Deactivate from any phase requires a reason and preserves the pipeline (WF-19).
-- Requirement questionnaire saves drafts, tracks progress, and supports template selection; AI assist produces editable draft text (or is cleanly disabled if no key).
+- Requirement questionnaire saves drafts, tracks progress, and supports template selection.
 - Quotation versioning is append-only and correct: exactly one CURRENT, others SUPERSEDED, all viewable; amounts stored in paise.
 - Client decision routes correctly: Accepted → Payment Pending handoff, Rejected → deactivate, Later → future follow-up (stays ACTIVE).
 - Every save/promote/deactivate/decision is audited.
@@ -181,10 +173,9 @@ export const draftQuestionnaire = (ctx: string) =>
 - Do **not** auto-promote to Project on Accept — payment is the gate (PHASE_8).
 - Do **not** build a heavy custom questionnaire/workflow builder (CONTEXT: keep simple; templates only).
 - Do **not** deactivate on "Later" — schedule a follow-up and keep the pipeline active.
-- Do **not** let AI output persist unreviewed or block manual entry.
 - Do **not** re-implement the phase state transitions here — call PHASE_5's service.
 
 ## 9. Dependencies / Enables
 
-- **Depends on:** PHASE_5 (engine), PHASE_6 (tasks/resources), PHASE_1 (AI SDK/R2).
+- **Depends on:** PHASE_5 (engine), PHASE_6 (tasks/resources), PHASE_1 (R2).
 - **Enables:** PHASE_8 (payment gate + project handoff), and feeds the handoff bundle.

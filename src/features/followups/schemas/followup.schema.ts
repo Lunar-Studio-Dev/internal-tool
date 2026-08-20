@@ -15,3 +15,12 @@ export const createFollowUpSchema = z.object({
   notes: optionalText(1000),
 });
 export type CreateFollowUpInput = z.infer<typeof createFollowUpSchema>;
+
+export const updateFollowUpSchema = z.object({
+  reason: z.string().trim().min(1, "Reason is required").max(200),
+  dueAt: requiredDateTime,
+  assigneeId: z.string().optional().or(z.literal("")),
+  notes: optionalText(1000),
+  rescheduleNotes: optionalText(500),
+});
+export type UpdateFollowUpInput = z.infer<typeof updateFollowUpSchema>;

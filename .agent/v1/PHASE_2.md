@@ -139,7 +139,7 @@ export async function requireUser() {
 ```
 
 - **Identity vs domain profile:** Neon Auth owns authentication + the `neon_auth.user` row (id, email, name, image). PHASE_3's `TeamMember` extends it with roles/status, linking via a plain `authUserId` string = `neon_auth.user.id` (no cross-schema FK; Neon manages `neon_auth`). Do not duplicate auth fields into the domain DB beyond the domain-owned profile.
-- **`src/proxy.ts`** guards `(app)/*` (matcher excludes `/auth`, `/api/auth`, `/api/inngest`, static); server components additionally call `requireUser()` so no unguarded data path exists. Server Actions pass through the proxy (they enforce auth themselves).
+- **`src/proxy.ts`** guards `(app)/*` (matcher excludes `/auth`, `/api/auth`, static); server components additionally call `requireUser()` so no unguarded data path exists. Server Actions pass through the proxy (they enforce auth themselves).
 
 ### Shell composition
 ```text

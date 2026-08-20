@@ -4,7 +4,7 @@
 
 ## 1. Objective
 
-Stand up a production-shaped Next.js monorepo-of-one that every later phase plugs into: App Router + TypeScript + Tailwind v4 + shadcn, a working Prisma 7 ↔ Neon connection, TanStack Query wired for the App Router, Zod validation, and the client SDKs for Inngest, R2, and the Vercel AI Gateway installed and configured. No product features yet — this is the skeleton and the paved road.
+Stand up a production-shaped Next.js monorepo-of-one that every later phase plugs into: App Router + TypeScript + Tailwind v4 + shadcn, a working Prisma 7 ↔ Neon connection, TanStack Query wired for the App Router, Zod validation, and the R2 S3 client installed and configured. No product features yet — this is the skeleton and the paved road.
 
 ## 2. Scope of Work (In Scope)
 
@@ -12,7 +12,7 @@ Stand up a production-shaped Next.js monorepo-of-one that every later phase plug
 - Initialize shadcn/ui (Tailwind v4) and install the base component set.
 - Configure Prisma 7 with the Neon serverless driver adapter + a single `db` client singleton.
 - Wire TanStack Query (server-safe `QueryClient`, provider, devtools, Hydration pattern).
-- Install + configure Zod, Inngest client + `/api/inngest` route, R2 S3 client, Vercel AI SDK (Gateway), and the charting lib.
+- Install + configure Zod, R2 S3 client, and the charting lib.
 - Establish the **features folder pattern**, path aliases, lint/format, and the base providers + root layout.
 - Author `.env` / `.env.example` for the full stack.
 - Add shared infra helpers: `lib/db.ts`, `lib/query/*`, `lib/utils.ts`, `lib/env.ts` (Zod-validated env).
@@ -22,7 +22,6 @@ Stand up a production-shaped Next.js monorepo-of-one that every later phase plug
 ### Functional
 - `pnpm dev` boots the app with a themeable shadcn baseline and no runtime errors.
 - `pnpm prisma migrate dev` connects to Neon and applies an (empty) initial migration.
-- A `/api/inngest` endpoint is reachable and the Inngest dev server can discover it.
 - A trivial TanStack Query hook renders on a client component and shows devtools.
 
 ### Non-Functional
@@ -36,7 +35,7 @@ Stand up a production-shaped Next.js monorepo-of-one that every later phase plug
 - Node 22 LTS, `pnpm` (via corepack).
 - A Neon project + database (copy the pooled connection string).
 - Cloudflare R2 bucket + S3 API token (Phase 6 needs it; create now).
-- A Vercel account (AI Gateway key + deploy target).
+- A Vercel account (deploy target).
 
 ## 5. Setup Commands (run in order)
 
@@ -71,24 +70,14 @@ pnpm dlx prisma init --datasource-provider postgresql
 # 4) Data / state / validation
 pnpm add @tanstack/react-query @tanstack/react-query-devtools zod
 
-# 5) Background jobs / workflows
-pnpm add inngest
-#   local dev (run in a separate terminal alongside `pnpm dev`):
-#   pnpm dlx inngest-cli@latest dev
-
-# 6) Object storage (Cloudflare R2 is S3-compatible)
+# 5) Object storage (Cloudflare R2 is S3-compatible)
 pnpm add @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
 
-# 7) AI SDK + Vercel AI Gateway (Google/Gemini via gateway)
-pnpm add ai @ai-sdk/react
-#   optional direct provider (uses GOOGLE_API_KEY instead of the gateway):
-#   pnpm add @ai-sdk/google
-
-# 8) Charts (TanStack React Charts, as specified in the stack)
+# 6) Charts (TanStack React Charts, as specified in the stack)
 pnpm add react-charts@beta
 #   NOTE: shadcn's Chart component (Recharts) is a theme-native alternative — see PHASE_11.
 
-# 9) Everyday utilities
+# 7) Everyday utilities
 pnpm add date-fns clsx tailwind-merge lucide-react nanoid
 ```
 
@@ -150,20 +139,12 @@ NEON_AUTH_COOKIE_SECRET=
 RESEND_API_KEY=
 EMAIL_FROM="Lunar Studio <onboarding@resend.dev>"
 
-# Inngest (PHASE_12 workflows; dev server needs no keys locally)
-INNGEST_EVENT_KEY=
-INNGEST_SIGNING_KEY=
-
 # Cloudflare R2 (PHASE_6)
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
 R2_BUCKET=
 R2_PUBLIC_BASE_URL=
-
-# Vercel AI Gateway (PHASE_7 / PHASE_11 AI assists)
-AI_GATEWAY_API_KEY=
-GOOGLE_API_KEY=
 ```
 
 ```ts
@@ -179,7 +160,6 @@ const schema = z.object({
   EMAIL_FROM: z.string().min(1).default("Lunar Studio <onboarding@resend.dev>"),
   R2_ACCOUNT_ID: z.string().optional(),
   R2_BUCKET: z.string().optional(),
-  AI_GATEWAY_API_KEY: z.string().optional(),
 });
 
 export const env = schema.parse(process.env);
@@ -211,7 +191,6 @@ internal-tool/
 │  │  │  ├─ analytics/
 │  │  │  └─ settings/
 │  │  ├─ api/
-│  │  │  ├─ inngest/route.ts   # Inngest serve handler
 │  │  │  ├─ r2/route.ts        # presigned upload/download (PHASE_6)
 │  │  │  └─ auth/[...path]/route.ts  # Neon Auth (Managed Better Auth) handler (PHASE_2)
 │  │  ├─ layout.tsx            # root: providers + fonts + globals.css
@@ -238,8 +217,6 @@ internal-tool/
 │  │  ├─ rbac.ts               # role → permission checks (PHASE_3)
 │  │  ├─ activity.ts           # logActivity() audit helper (PHASE_4)
 │  │  ├─ r2.ts                 # R2 S3 client + presign (PHASE_6)
-│  │  ├─ ai.ts                 # AI Gateway client (PHASE_7)
-│  │  ├─ inngest/              # client.ts + functions/*
 │  │  ├─ query/                # get-query-client.ts + provider.tsx
 │  │  └─ utils.ts              # cn(), money + date formatters
 │  └─ hooks/                   # shared client hooks
@@ -304,7 +281,6 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
 - `pnpm prisma migrate dev` succeeds against Neon; `db` singleton imports cleanly in a server component.
 - shadcn components render with the chosen theme; dark mode toggles.
 - TanStack Query devtools visible; a sample prefetched query hydrates without a client refetch.
-- `/api/inngest` returns the Inngest introspection response; dev server lists 0 functions.
 - `lib/env.ts` throws clearly when a required var is missing.
 - Lint + typecheck + format all green.
 

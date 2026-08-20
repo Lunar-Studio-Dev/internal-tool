@@ -1,5 +1,6 @@
 "use client";
 
+import { format } from "date-fns";
 import { CheckIcon } from "lucide-react";
 
 import { StatusBadge } from "@/components/common/status-badge";
@@ -70,11 +71,15 @@ function PipelinePhaseCard({
   steps,
   currentStep,
   deactivated,
+  paymentPending = false,
+  phaseStartedAt = null,
   className,
 }: {
   steps: string[];
   currentStep: number;
   deactivated: boolean;
+  paymentPending?: boolean;
+  phaseStartedAt?: Date | null;
   className?: string;
 }) {
   if (steps.length === 0) return null;
@@ -84,29 +89,81 @@ function PipelinePhaseCard({
 
   return (
     <Card className={className}>
-      <CardContent className="flex flex-col gap-3">
+      <CardContent className="flex flex-col gap-4">
         <div
           role="status"
           aria-label={`Pipeline phase ${currentStep + 1} of ${steps.length}: ${currentLabel}${deactivated ? ", deactivated" : ""}`}
           className="flex flex-col gap-3"
         >
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-muted-foreground">
-              Phase {currentStep + 1} of {steps.length}
-            </span>
-            <StatusBadge kind={deactivated ? "DEACTIVATED" : "ACTIVE"} />
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted-foreground">Current phase</p>
+              <p className="text-xl font-semibold leading-snug break-words">{currentLabel}</p>
+              {phaseStartedAt ? (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Started {format(phaseStartedAt, "d MMM yyyy")}
+                </p>
+              ) : null}
+              {paymentPending ? (
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                  Payment pending — awaiting initial payment
+                </p>
+              ) : null}
+            </div>
+            <div className="flex shrink-0 flex-col items-end gap-1.5">
+              <span className="text-xs text-muted-foreground">
+                Phase {currentStep + 1} of {steps.length}
+              </span>
+              <StatusBadge kind={deactivated ? "DEACTIVATED" : paymentPending ? "PENDING" : "ACTIVE"} />
+            </div>
           </div>
-          <p className="text-lg font-semibold leading-snug break-words">{currentLabel}</p>
+
           <Progress
             value={progress}
             className={cn(deactivated && "[&_[data-slot=progress-indicator]]:bg-destructive")}
           />
-          <ol className="flex items-center justify-between gap-1" aria-label="Pipeline phases">
+
+          <ol className="flex items-center justify-between gap-1 md:hidden" aria-label="Pipeline phases">
             {steps.map((label, index) => {
               const state = stateFor(index, currentStep, deactivated);
               return (
                 <li key={label} aria-label={`${label}: ${state}`}>
                   <StepIndicator state={state} index={index} size="sm" />
+                </li>
+              );
+            })}
+          </ol>
+
+          <ol className="hidden w-full items-center md:flex" aria-label="Pipeline phases">
+            {steps.map((label, index) => {
+              const state = stateFor(index, currentStep, deactivated);
+              const isLast = index === steps.length - 1;
+              const isCurrent = index === currentStep;
+
+              return (
+                <li key={label} className="flex min-w-0 items-center">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <StepIndicator state={state} index={index} size="md" />
+                    <span
+                      className={cn(
+                        "truncate text-sm",
+                        state === "upcoming" && "text-muted-foreground",
+                        isCurrent && "font-semibold text-foreground",
+                        !isCurrent && state === "completed" && "font-medium",
+                      )}
+                    >
+                      {label}
+                    </span>
+                  </div>
+                  {!isLast ? (
+                    <span
+                      className={cn(
+                        "mx-2 h-px min-w-4 flex-1",
+                        index < currentStep ? "bg-primary" : "bg-border",
+                      )}
+                      aria-hidden
+                    />
+                  ) : null}
                 </li>
               );
             })}
@@ -117,61 +174,12 @@ function PipelinePhaseCard({
   );
 }
 
-function PipelineStepperDesktop({
-  steps,
-  currentStep,
-  deactivated,
-  className,
-}: {
-  steps: string[];
-  currentStep: number;
-  deactivated: boolean;
-  className?: string;
-}) {
-  if (steps.length === 0) return null;
-
-  return (
-    <ol className={cn("flex w-full items-center", className)} aria-label="Pipeline phases">
-      {steps.map((label, index) => {
-        const state = stateFor(index, currentStep, deactivated);
-        const isLast = index === steps.length - 1;
-        const isCurrent = index === currentStep;
-
-        return (
-          <li key={label} className="flex items-center">
-            <div className="flex items-center gap-2">
-              <StepIndicator state={state} index={index} size="md" />
-              <span
-                className={cn(
-                  "whitespace-nowrap text-sm",
-                  state === "upcoming" && "text-muted-foreground",
-                  isCurrent && "font-semibold",
-                  !isCurrent && state !== "upcoming" && "font-medium",
-                )}
-              >
-                {label}
-              </span>
-            </div>
-            {!isLast ? (
-              <span
-                className={cn(
-                  "mx-2 h-px min-w-8 flex-1",
-                  index < currentStep ? "bg-primary" : "bg-border",
-                )}
-                aria-hidden
-              />
-            ) : null}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
 export function PipelineStepper({
   steps = [...PIPELINE_PHASES],
   currentStep,
   deactivated = false,
+  paymentPending = false,
+  phaseStartedAt = null,
   className,
 }: {
   steps?: string[];
@@ -179,6 +187,9 @@ export function PipelineStepper({
   currentStep: number;
   /** When true, the current phase is rendered as deactivated (stopped). */
   deactivated?: boolean;
+  paymentPending?: boolean;
+  /** When the current pipeline phase started. */
+  phaseStartedAt?: Date | null;
   className?: string;
 }) {
   const clamped = clampStep(currentStep, steps.length);
@@ -186,19 +197,13 @@ export function PipelineStepper({
   if (steps.length === 0) return null;
 
   return (
-    <div className={className}>
-      <PipelinePhaseCard
-        steps={steps}
-        currentStep={clamped}
-        deactivated={deactivated}
-        className="md:hidden"
-      />
-      <PipelineStepperDesktop
-        steps={steps}
-        currentStep={clamped}
-        deactivated={deactivated}
-        className="hidden md:flex"
-      />
-    </div>
+    <PipelinePhaseCard
+      steps={steps}
+      currentStep={clamped}
+      deactivated={deactivated}
+      paymentPending={paymentPending}
+      phaseStartedAt={phaseStartedAt}
+      className={className}
+    />
   );
 }

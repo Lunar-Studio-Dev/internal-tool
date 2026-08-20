@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { InfoRow } from "@/components/common/info-row";
 import { PageHeader } from "@/components/common/page-header";
 import { QueryGate } from "@/components/common/query-gate";
+import { BusinessDetailSkeleton } from "@/components/common/skeletons";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -104,6 +105,7 @@ export function BusinessDetail({ id }: { id: string }) {
       isPending={businessQuery.isPending}
       isError={businessQuery.isError}
       error={businessQuery.error}
+      skeleton={<BusinessDetailSkeleton />}
     >
       {business && editInitial ? (
         <>

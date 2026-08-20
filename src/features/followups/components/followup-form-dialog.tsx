@@ -11,24 +11,33 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { FollowUpForm } from "@/features/followups/components/followup-form";
+import { EmptyState } from "@/components/common/empty-state";
+import { FormCardSkeleton } from "@/components/common/skeletons";
+import {
+  FollowUpForm,
+  type FollowUpFormInitial,
+} from "@/features/followups/components/followup-form";
 import { taskQueries } from "@/features/tasks/api";
 import type { PhaseType } from "@/generated/prisma/enums";
+import { AlertCircleIcon } from "lucide-react";
 
 export function FollowUpFormDialog({
   members,
   businessId,
   pipelineId,
   phaseType,
+  followUp,
   trigger,
 }: {
   members?: { id: string; name: string }[];
   businessId?: string | null;
   pipelineId?: string | null;
   phaseType?: PhaseType | null;
+  followUp?: FollowUpFormInitial;
   trigger: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const isEdit = Boolean(followUp);
   const optionsQuery = useQuery({ ...taskQueries.options(), enabled: open && !members });
   const resolved = members ?? optionsQuery.data?.members ?? [];
 
@@ -37,8 +46,12 @@ export function FollowUpFormDialog({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Schedule follow-up</DialogTitle>
-          <DialogDescription>A scheduled action so this opportunity doesn&apos;t go cold.</DialogDescription>
+          <DialogTitle>{isEdit ? "Edit follow-up" : "Schedule follow-up"}</DialogTitle>
+          <DialogDescription>
+            {isEdit
+              ? "Update details or change the due date. Date changes are tracked in reschedule history."
+              : "A scheduled action so this opportunity doesn't go cold."}
+          </DialogDescription>
         </DialogHeader>
         {members || optionsQuery.data ? (
           <FollowUpForm
@@ -46,12 +59,20 @@ export function FollowUpFormDialog({
             businessId={businessId}
             pipelineId={pipelineId}
             phaseType={phaseType}
+            followUp={followUp}
             onSuccess={() => {
               setOpen(false);
             }}
           />
+        ) : optionsQuery.isError ? (
+          <EmptyState
+            icon={AlertCircleIcon}
+            title="Could not load form options"
+            description={optionsQuery.error?.message ?? "Try again."}
+            className="p-6"
+          />
         ) : (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <FormCardSkeleton fields={4} />
         )}
       </DialogContent>
     </Dialog>

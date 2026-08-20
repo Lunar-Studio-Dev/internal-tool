@@ -77,8 +77,38 @@ export type Task = Prisma.TaskModel
  */
 export type FollowUp = Prisma.FollowUpModel
 /**
+ * Model FollowUpReschedule
+ * Append-only log when a follow-up due date is changed.
+ */
+export type FollowUpReschedule = Prisma.FollowUpRescheduleModel
+/**
  * Model Resource
  * File/document metadata; the object itself lives in Cloudflare R2 (objectKey).
  * Scoped to a Business, or Business + Pipeline + Phase.
  */
 export type Resource = Prisma.ResourceModel
+/**
+ * Model Discovery
+ * 
+ */
+export type Discovery = Prisma.DiscoveryModel
+/**
+ * Model BusinessUnderstanding
+ * 
+ */
+export type BusinessUnderstanding = Prisma.BusinessUnderstandingModel
+/**
+ * Model Requirement
+ * 
+ */
+export type Requirement = Prisma.RequirementModel
+/**
+ * Model Quotation
+ * 
+ */
+export type Quotation = Prisma.QuotationModel
+/**
+ * Model PipelineDecision
+ * 
+ */
+export type PipelineDecision = Prisma.PipelineDecisionModel

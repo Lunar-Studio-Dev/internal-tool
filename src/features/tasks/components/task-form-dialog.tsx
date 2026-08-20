@@ -11,10 +11,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/common/empty-state";
+import { FormCardSkeleton } from "@/components/common/skeletons";
 import { taskQueries } from "@/features/tasks/api";
 import { TaskForm, type TaskFormInitial } from "@/features/tasks/components/task-form";
 import type { TaskOptions } from "@/features/tasks/server/tasks.queries";
 import { Priority, TaskStatus, type PhaseType } from "@/generated/prisma/enums";
+import { AlertCircleIcon } from "lucide-react";
 
 export function TaskFormDialog({
   mode,
@@ -66,8 +69,15 @@ export function TaskFormDialog({
             initial={mergedInitial}
             onSuccess={() => setOpen(false)}
           />
+        ) : optionsQuery.isError ? (
+          <EmptyState
+            icon={AlertCircleIcon}
+            title="Could not load form options"
+            description={optionsQuery.error?.message ?? "Try again."}
+            className="p-6"
+          />
         ) : (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <FormCardSkeleton fields={5} />
         )}
       </DialogContent>
     </Dialog>

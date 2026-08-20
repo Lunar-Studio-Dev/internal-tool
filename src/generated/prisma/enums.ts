@@ -117,3 +117,22 @@ export const ResourceType = {
 } as const
 
 export type ResourceType = (typeof ResourceType)[keyof typeof ResourceType]
+
+
+export const QuotationVersionStatus = {
+  DRAFT: 'DRAFT',
+  CURRENT: 'CURRENT',
+  SUPERSEDED: 'SUPERSEDED'
+} as const
+
+export type QuotationVersionStatus = (typeof QuotationVersionStatus)[keyof typeof QuotationVersionStatus]
+
+
+export const ClientDecision = {
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+  LATER: 'LATER'
+} as const
+
+export type ClientDecision = (typeof ClientDecision)[keyof typeof ClientDecision]

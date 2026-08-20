@@ -26,8 +26,7 @@ export default async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Protect everything except the auth pages, the auth + inngest APIs, and
-    // Next.js static assets.
-    "/((?!auth|api/auth|api/inngest|_next/static|_next/image|favicon.ico).*)",
+    // Protect everything except the auth pages, the auth API, and Next.js static assets.
+    "/((?!auth|api/auth|_next/static|_next/image|favicon.ico).*)",
   ],
 };

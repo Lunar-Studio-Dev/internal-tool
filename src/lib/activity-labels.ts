@@ -16,8 +16,19 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   "task.reassigned": "reassigned a task",
   "followup.created": "scheduled a follow-up",
   "followup.completed": "completed a follow-up",
+  "followup.updated": "updated a follow-up",
+  "followup.rescheduled": "rescheduled a follow-up",
   "resource.created": "uploaded a resource",
   "resource.deleted": "deleted a resource",
+  "phase.discovery.saved": "saved discovery notes",
+  "phase.understanding.saved": "saved business understanding",
+  "phase.requirement.saved": "saved requirements",
+  "phase.research.saved": "updated business research",
+  "quotation.created": "created a quotation version",
+  "quotation.published": "published a quotation",
+  "quotation.accepted": "recorded quotation acceptance",
+  "quotation.rejected": "recorded quotation rejection",
+  "quotation.deferred": "deferred the quotation decision",
 };
 
 export function activityLabel(action: string): string {

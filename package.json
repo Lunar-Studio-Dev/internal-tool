@@ -6,11 +6,9 @@
     "dev": "next dev",
     "build": "pnpm dlx prisma generate && next build",
     "start": "next start",
-    "lint": "eslint",
-    "inngest:dev": "pnpm dlx inngest-cli@latest dev -u http://localhost:3000/api/inngest"
+    "lint": "eslint"
   },
   "dependencies": {
-    "@ai-sdk/react": "^4.0.69",
     "@aws-sdk/client-s3": "^3.1111.0",
     "@aws-sdk/s3-request-presigner": "^3.1111.0",
     "@neondatabase/auth": "0.5.0-beta",
@@ -21,12 +19,10 @@
     "@tanstack/react-query": "^5.101.4",
     "@tanstack/react-query-devtools": "^5.101.4",
     "@tanstack/react-table": "^9.1.2",
-    "ai": "^7.0.66",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.4.0",
-    "inngest": "^4.18.1",
     "lucide-react": "^1.31.0",
     "nanoid": "^6.0.1",
     "next": "16.3.1",

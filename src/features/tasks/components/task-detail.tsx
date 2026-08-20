@@ -6,6 +6,7 @@ import { format } from "date-fns";
 
 import { PageHeader } from "@/components/common/page-header";
 import { QueryGate } from "@/components/common/query-gate";
+import { DetailCardsSkeleton, PageHeaderSkeleton } from "@/components/common/skeletons";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TaskDetailActions } from "@/features/tasks/components/task-detail-actions";
@@ -49,6 +50,12 @@ export function TaskDetail({ id }: { id: string }) {
       isPending={taskQuery.isPending || optionsQuery.isPending}
       isError={taskQuery.isError || optionsQuery.isError}
       error={taskQuery.error ?? optionsQuery.error}
+      skeleton={
+        <div className="flex flex-col gap-4">
+          <PageHeaderSkeleton />
+          <DetailCardsSkeleton />
+        </div>
+      }
     >
       {task && options && initial ? (
         <>

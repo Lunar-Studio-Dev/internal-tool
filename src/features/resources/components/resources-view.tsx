@@ -5,6 +5,7 @@ import { UploadIcon } from "lucide-react";
 
 import { PageHeader } from "@/components/common/page-header";
 import { QueryGate } from "@/components/common/query-gate";
+import { ResourceLibrarySkeleton } from "@/components/common/skeletons";
 import { Button } from "@/components/ui/button";
 import { resourceQueries } from "@/features/resources/api";
 import {
@@ -49,7 +50,12 @@ export function ResourcesView() {
           ) : undefined
         }
       />
-      <QueryGate isPending={listQuery.isPending} isError={listQuery.isError} error={listQuery.error}>
+      <QueryGate
+        isPending={listQuery.isPending}
+        isError={listQuery.isError}
+        error={listQuery.error}
+        skeleton={<ResourceLibrarySkeleton />}
+      >
         <ResourceLibraryTable resources={rows} canWrite={canWrite} />
       </QueryGate>
     </>

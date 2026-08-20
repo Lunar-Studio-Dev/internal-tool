@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { EmptyState } from "@/components/common/empty-state";
 import { QueryGate } from "@/components/common/query-gate";
+import { TaskDashboardSkeleton } from "@/components/common/skeletons";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -162,6 +163,7 @@ export function TaskDashboard() {
       isPending={tasksQuery.isPending || optionsQuery.isPending}
       isError={tasksQuery.isError || optionsQuery.isError}
       error={tasksQuery.error ?? optionsQuery.error}
+      skeleton={<TaskDashboardSkeleton />}
     >
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

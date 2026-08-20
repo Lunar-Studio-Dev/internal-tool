@@ -7,6 +7,7 @@ import { PlusIcon, SearchIcon } from "lucide-react";
 
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
 import { QueryGate } from "@/components/common/query-gate";
+import { TablePageSkeleton } from "@/components/common/skeletons";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -104,7 +105,12 @@ export function MembersView() {
   ];
 
   return (
-    <QueryGate isPending={query.isPending} isError={query.isError} error={query.error}>
+    <QueryGate
+      isPending={query.isPending}
+      isError={query.isError}
+      error={query.error}
+      skeleton={<TablePageSkeleton columns={5} />}
+    >
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-52 flex-1">

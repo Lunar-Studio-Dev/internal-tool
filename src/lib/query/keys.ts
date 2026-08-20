@@ -23,6 +23,9 @@ export const queryKeys = {
     tasks: (id: string) => [...queryKeys.pipelines.detail(id), "tasks"] as const,
     resources: (id: string) => [...queryKeys.pipelines.detail(id), "resources"] as const,
     reasons: () => [...queryKeys.pipelines.all, "reasons"] as const,
+    phases: (id: string) => [...queryKeys.pipelines.detail(id), "phases"] as const,
+    quotations: (id: string) => [...queryKeys.pipelines.detail(id), "quotations"] as const,
+    decision: (id: string) => [...queryKeys.pipelines.detail(id), "decision"] as const,
   },
   tasks: {
     all: ["tasks"] as const,

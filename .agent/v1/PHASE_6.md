@@ -14,7 +14,7 @@ Build three cross-cutting modules: **To-Dos/Tasks** (independent records, option
 - Resource library with filters (Business/Pipeline/Phase/Type), upload via R2 presigned URL, detail/preview/download — WF-38, WF-39, WF-40.
 - R2 client + presigned upload/download route (`lib/r2.ts`, `/api/r2`).
 - Hook the phase shell's Add-Task/Follow-up/Resource buttons to these modules (prefilled Business/Pipeline/Phase).
-- Overdue is derived (a task past due & not done reads OVERDUE); auto-reclassification job is scheduled in PHASE_12 (Inngest).
+- Overdue is derived (a task past due & not done reads OVERDUE); PHASE_12 may add overdue notifications later.
 
 ## 3. Requirements
 
@@ -137,7 +137,7 @@ model Resource {
   @@index([businessId]) @@index([pipelineId]) @@index([type])
 }
 ```
-> "Overdue" = `status NOT IN (COMPLETED, CANCELLED) AND dueAt < now()`. Compute in queries; a PHASE_12 Inngest job flips notifications, not a stored status.
+> "Overdue" = `status NOT IN (COMPLETED, CANCELLED) AND dueAt < now()`. Compute in queries; do not store OVERDUE as a status.
 
 ### R2 storage
 ```ts
@@ -178,7 +178,7 @@ src/features/resources/  components(library-table,upload-dialog,detail,type-filt
 ## 8. What NOT To Do
 
 - Do **not** store files in Postgres or the app filesystem — R2 only; DB holds metadata + key.
-- Do **not** implement the Inngest overdue/reminder cron here — that's PHASE_12 (this phase only derives Overdue in reads).
+- Do **not** implement overdue/reminder cron jobs here — that's PHASE_12 (this phase only derives Overdue in reads).
 - Do **not** hard-delete follow-up history; resource delete is a guarded, audited action (not bulk).
 - Do **not** duplicate task/resource logic inside phase features — those call into these shared modules.
 - Do **not** issue long-lived or write-scoped presigned URLs to the browser.

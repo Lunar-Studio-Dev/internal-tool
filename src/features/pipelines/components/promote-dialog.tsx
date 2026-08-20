@@ -27,9 +27,13 @@ import type { PhaseType } from "@/generated/prisma/enums";
 export function PromoteDialog({
   pipelineId,
   nextPhase,
+  size = "default",
+  className,
 }: {
   pipelineId: string;
   nextPhase: PhaseType;
+  size?: "default" | "sm";
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [notes, setNotes] = useState("");
@@ -58,7 +62,7 @@ export function PromoteDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button size={size} className={className}>
           <ArrowRightIcon className="size-4" />
           Promote to {PHASE_LABELS[nextPhase]}
         </Button>

@@ -29,10 +29,6 @@ const schema = z.object({
   R2_SECRET_ACCESS_KEY: z.string().optional(),
   R2_BUCKET: z.string().optional(),
   R2_PUBLIC_BASE_URL: z.string().optional(),
-
-  // Vercel AI Gateway (PHASE_7)
-  AI_GATEWAY_API_KEY: z.string().optional(),
-  GOOGLE_API_KEY: z.string().optional(),
 });
 
 const parsed = schema.safeParse(process.env);

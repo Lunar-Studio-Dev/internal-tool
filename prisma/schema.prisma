@@ -169,6 +169,11 @@ model Pipeline {
   currentPhase         PhaseType       @default(DISCOVERY)
   status               PipelineStatus  @default(ACTIVE)
   phases               PipelinePhase[]
+  discovery            Discovery?
+  understanding        BusinessUnderstanding?
+  requirement          Requirement?
+  quotations           Quotation[]
+  decision             PipelineDecision?
   deactivationReasonId String?
   deactivatedAt        DateTime?
   deactivatedById      String?
@@ -278,9 +283,27 @@ model FollowUp {
   createdById String?
   createdAt   DateTime   @default(now())
 
+  reschedules FollowUpReschedule[]
+
   @@index([assigneeId, dueAt])
   @@index([pipelineId])
   @@map("follow_up")
+}
+
+/// Append-only log when a follow-up due date is changed.
+model FollowUpReschedule {
+  id              String   @id @default(cuid())
+  followUpId      String
+  previousDueAt   DateTime
+  newDueAt        DateTime
+  rescheduledById String?
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  followUp FollowUp @relation(fields: [followUpId], references: [id], onDelete: Cascade)
+
+  @@index([followUpId])
+  @@map("follow_up_reschedule")
 }
 
 /// File/document metadata; the object itself lives in Cloudflare R2 (objectKey).
@@ -303,4 +326,99 @@ model Resource {
   @@index([pipelineId])
   @@index([type])
   @@map("resource")
+}
+
+// ─── PHASE_7 — Phase payloads, quotations & client decision ───
+
+enum QuotationVersionStatus {
+  DRAFT
+  CURRENT
+  SUPERSEDED
+}
+
+enum ClientDecision {
+  PENDING
+  ACCEPTED
+  REJECTED
+  LATER
+}
+
+model Discovery {
+  id             String   @id @default(cuid())
+  pipelineId     String   @unique
+  pipeline       Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  meetingAt      DateTime?
+  meetingLink    String?
+  meetingOwnerId String?
+  notes          String?
+  checklist      Json?
+  updatedAt      DateTime @updatedAt
+
+  @@map("discovery")
+}
+
+model BusinessUnderstanding {
+  id            String   @id @default(cuid())
+  pipelineId    String   @unique
+  pipeline      Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  model         String?
+  operations    String?
+  processes     String?
+  painPoints    Json?
+  opportunities Json?
+  stakeholders  Json?
+  updatedAt     DateTime @updatedAt
+
+  @@map("business_understanding")
+}
+
+model Requirement {
+  id             String   @id @default(cuid())
+  pipelineId     String   @unique
+  pipeline       Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  templateKey    String?
+  businessReq    String?
+  functionalReq  String?
+  technicalReq   String?
+  features       Json?
+  users          Json?
+  integrations   String?
+  timeline       String?
+  constraints    String?
+  questionnaire  Json?
+  updatedAt      DateTime @updatedAt
+
+  @@map("requirement")
+}
+
+model Quotation {
+  id              String                 @id @default(cuid())
+  pipelineId      String
+  pipeline        Pipeline               @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  version         Int
+  title           String?
+  scope           String?
+  items           Json
+  subtotal        Int
+  initialPayment  Int
+  paymentTerms    String?
+  validUntil      DateTime?
+  status          QuotationVersionStatus @default(DRAFT)
+  pdfResourceId   String?
+  createdById     String?
+  createdAt       DateTime               @default(now())
+
+  @@unique([pipelineId, version])
+  @@index([pipelineId])
+  @@map("quotation")
+}
+
+model PipelineDecision {
+  pipelineId String         @id
+  pipeline   Pipeline       @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  decision   ClientDecision @default(PENDING)
+  decidedAt  DateTime?
+  notes      String?
+
+  @@map("pipeline_decision")
 }

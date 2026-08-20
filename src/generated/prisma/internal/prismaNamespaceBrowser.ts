@@ -60,7 +60,13 @@ export const ModelName = {
   DeactivationReason: 'DeactivationReason',
   Task: 'Task',
   FollowUp: 'FollowUp',
-  Resource: 'Resource'
+  FollowUpReschedule: 'FollowUpReschedule',
+  Resource: 'Resource',
+  Discovery: 'Discovery',
+  BusinessUnderstanding: 'BusinessUnderstanding',
+  Requirement: 'Requirement',
+  Quotation: 'Quotation',
+  PipelineDecision: 'PipelineDecision'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -229,6 +235,19 @@ export const FollowUpScalarFieldEnum = {
 export type FollowUpScalarFieldEnum = (typeof FollowUpScalarFieldEnum)[keyof typeof FollowUpScalarFieldEnum]
 
 
+export const FollowUpRescheduleScalarFieldEnum = {
+  id: 'id',
+  followUpId: 'followUpId',
+  previousDueAt: 'previousDueAt',
+  newDueAt: 'newDueAt',
+  rescheduledById: 'rescheduledById',
+  notes: 'notes',
+  createdAt: 'createdAt'
+} as const
+
+export type FollowUpRescheduleScalarFieldEnum = (typeof FollowUpRescheduleScalarFieldEnum)[keyof typeof FollowUpRescheduleScalarFieldEnum]
+
+
 export const ResourceScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -247,6 +266,84 @@ export const ResourceScalarFieldEnum = {
 export type ResourceScalarFieldEnum = (typeof ResourceScalarFieldEnum)[keyof typeof ResourceScalarFieldEnum]
 
 
+export const DiscoveryScalarFieldEnum = {
+  id: 'id',
+  pipelineId: 'pipelineId',
+  meetingAt: 'meetingAt',
+  meetingLink: 'meetingLink',
+  meetingOwnerId: 'meetingOwnerId',
+  notes: 'notes',
+  checklist: 'checklist',
+  updatedAt: 'updatedAt'
+} as const
+
+export type DiscoveryScalarFieldEnum = (typeof DiscoveryScalarFieldEnum)[keyof typeof DiscoveryScalarFieldEnum]
+
+
+export const BusinessUnderstandingScalarFieldEnum = {
+  id: 'id',
+  pipelineId: 'pipelineId',
+  model: 'model',
+  operations: 'operations',
+  processes: 'processes',
+  painPoints: 'painPoints',
+  opportunities: 'opportunities',
+  stakeholders: 'stakeholders',
+  updatedAt: 'updatedAt'
+} as const
+
+export type BusinessUnderstandingScalarFieldEnum = (typeof BusinessUnderstandingScalarFieldEnum)[keyof typeof BusinessUnderstandingScalarFieldEnum]
+
+
+export const RequirementScalarFieldEnum = {
+  id: 'id',
+  pipelineId: 'pipelineId',
+  templateKey: 'templateKey',
+  businessReq: 'businessReq',
+  functionalReq: 'functionalReq',
+  technicalReq: 'technicalReq',
+  features: 'features',
+  users: 'users',
+  integrations: 'integrations',
+  timeline: 'timeline',
+  constraints: 'constraints',
+  questionnaire: 'questionnaire',
+  updatedAt: 'updatedAt'
+} as const
+
+export type RequirementScalarFieldEnum = (typeof RequirementScalarFieldEnum)[keyof typeof RequirementScalarFieldEnum]
+
+
+export const QuotationScalarFieldEnum = {
+  id: 'id',
+  pipelineId: 'pipelineId',
+  version: 'version',
+  title: 'title',
+  scope: 'scope',
+  items: 'items',
+  subtotal: 'subtotal',
+  initialPayment: 'initialPayment',
+  paymentTerms: 'paymentTerms',
+  validUntil: 'validUntil',
+  status: 'status',
+  pdfResourceId: 'pdfResourceId',
+  createdById: 'createdById',
+  createdAt: 'createdAt'
+} as const
+
+export type QuotationScalarFieldEnum = (typeof QuotationScalarFieldEnum)[keyof typeof QuotationScalarFieldEnum]
+
+
+export const PipelineDecisionScalarFieldEnum = {
+  pipelineId: 'pipelineId',
+  decision: 'decision',
+  decidedAt: 'decidedAt',
+  notes: 'notes'
+} as const
+
+export type PipelineDecisionScalarFieldEnum = (typeof PipelineDecisionScalarFieldEnum)[keyof typeof PipelineDecisionScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -261,6 +358,13 @@ export const NullableJsonNullValueInput = {
 } as const
 
 export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const QueryMode = {

@@ -1,10 +1,10 @@
-# Phase 12 — System & Cross-cutting (Activity, Search, Notifications, Settings, Jobs)
+# Phase 12 — System & Cross-cutting (Activity, Search, Notifications, Settings)
 
-> Depends on all prior phases. Completes the platform: the full Activity timeline, global search, notifications, settings + deactivation-reasons admin, and the Inngest scheduled jobs/workflows that keep data honest.
+> Depends on all prior phases. Completes the platform: the full Activity timeline, global search, notifications, settings + deactivation-reasons admin.
 
 ## 1. Objective
 
-Round out the app with the cross-cutting features that touch every module: a system-wide Activity timeline, global search across entities, an in-app notification center, the Settings area (general + pipeline reference + deactivation reasons management), and the background jobs (overdue task reclassification, follow-up/payment reminders, stale-pipeline surfacing, notification fan-out) using Inngest.
+Round out the app with the cross-cutting features that touch every module: a system-wide Activity timeline, global search across entities, an in-app notification center, and the Settings area (general + pipeline reference + deactivation reasons management).
 
 ## 2. Scope of Work (In Scope)
 
@@ -14,7 +14,6 @@ Round out the app with the cross-cutting features that touch every module: a sys
 - Settings (WF-54): General (company, currency, date format, timezone), Pipeline phases (read-only reference), and tabs to Team/Roles (PHASE_3).
 - Deactivation Reasons admin (WF-55): list with usage, add/edit/disable (model + seed from PHASE_5).
 - User Profile page (WF-57 menu targets): profile, my tasks, notifications, settings.
-- **Inngest** jobs: overdue reclassification/notify, follow-up & payment reminders, stale-pipeline detector, notification delivery; `/api/inngest` route wired in PHASE_1.
 
 ## 3. Requirements
 
@@ -24,29 +23,21 @@ Round out the app with the cross-cutting features that touch every module: a sys
 3. Notifications: payment received, meeting reminders, task overdue, quotation uploaded, pipeline deactivated, etc.; unread count on the bell; Mark All Read — WF-56.
 4. Settings General persists company name, currency (default INR), date format, timezone (default Asia/Kolkata); pipeline phases shown read-only (fixed workflow) — WF-54.
 5. Deactivation Reasons: list with usage counts; add/edit/disable (disabled reasons hidden from new deactivations, kept for history) — WF-55.
-6. Inngest jobs:
-   - **Overdue reclassification**: daily/hourly — find tasks past due & not done → emit notifications (status stays; Overdue is derived per PHASE_6).
-   - **Follow-up & payment reminders**: notify assignees ahead of/at due time.
-   - **Stale-pipeline detector**: flag pipelines inactive N days → dashboard "Inactive/Stale" indicator (do NOT auto-deactivate — CONTEXT rule).
-   - **Notification fan-out**: turn domain events into notification rows.
+6. Domain events create notification rows **synchronously** from the relevant server actions (no separate job runner). Overdue tasks and stale pipelines remain **derived in queries** (PHASE_6 / dashboard), not flipped by a cron.
 
 ### Non-Functional
 - Search is indexed (Postgres trigram/`ILIKE` on key columns) and capped/paginated.
 - Settings are read through a cached accessor; currency/timezone feed the shared formatters (PHASE_1).
-- Inngest functions are idempotent, retry-safe, and signed (`INNGEST_SIGNING_KEY`) in production; local dev uses the Inngest dev server.
-- Jobs never destroy data or auto-deactivate pipelines.
+- Notification writes are idempotent where the same domain event could fire twice; never destroy data or auto-deactivate pipelines.
 
-## 4. End-to-End Flow / Jobs
+## 4. End-to-End Flow
 
 ```text
 Domain events (payment.recorded, task.overdue, followup.due, quotation.uploaded, pipeline.deactivated)
-        │ emitted from server actions via inngest.send(...)
+        │ emitted from server actions (create Notification in the same request)
         ▼
-Inngest functions (/api/inngest) ──▶ create Notification rows ──▶ bell badge + center (WF-56)
-Scheduled (cron):
-  daily  overdue-scan     → notify overdue task assignees
-  hourly reminder-scan    → follow-up/payment reminders
-  daily  stale-detector   → mark pipelines stale → Dashboard indicator (PHASE_11)
+Notification rows ──▶ bell badge + center (WF-56)
+Overdue / stale: derived at read time (queries + dashboard indicators) — never auto-deactivate
 Search: ⌘K palette / WF-53 → grouped results → deep link
 Activity: WF-52 timeline (system + scoped)
 Settings: WF-54 general + WF-55 deactivation reasons admin
@@ -119,29 +110,11 @@ model AppSettings {
   updatedAt  DateTime @updatedAt
 }
 // DeactivationReason: from PHASE_5 (add usage list/admin here)
-// Pipeline: add `lastActivityAt` + `isStale` (set by detector) for the dashboard indicator
+// Pipeline: optional `lastActivityAt` for dashboard stale indicator (derived vs N days)
 ```
 
-### Inngest
-```ts
-// src/lib/inngest/client.ts
-import { Inngest } from "inngest";
-export const inngest = new Inngest({ id: "lunar-internal-tool" });
-
-// src/app/api/inngest/route.ts
-import { serve } from "inngest/next";
-import { inngest } from "@/lib/inngest/client";
-import * as fns from "@/lib/inngest/functions";
-export const { GET, POST, PUT } = serve({ client: inngest, functions: Object.values(fns) });
-
-// src/lib/inngest/functions/overdue-scan.ts (example: scheduled)
-export const overdueScan = inngest.createFunction(
-  { id: "overdue-scan" },
-  { cron: "0 * * * *" },
-  async ({ step }) => { /* find overdue tasks → notify assignees (idempotent) */ }
-);
-```
-Server actions emit events (`inngest.send({ name: "payment.recorded", data })`); functions fan out to `Notification` rows. The stale detector sets `Pipeline.isStale` for the PHASE_11 dashboard indicator — it never deactivates.
+### Notifications
+Server actions that matter (payment recorded, quotation uploaded, pipeline deactivated, etc.) call a shared `createNotification(...)` helper in the same transaction/request. Overdue and stale indicators stay query-derived — do not auto-deactivate.
 
 ### Search
 ```ts
@@ -157,17 +130,15 @@ src/features/activity/      components(timeline, day-group) server(queries) hook
 src/features/search/        components(command-palette, results) server(queries) hooks
 src/features/notifications/ components(center, bell, item) server(actions, queries) hooks
 src/features/settings/      components(general-form, pipeline-reference, reasons-admin) server(actions, queries) hooks schemas
-src/lib/inngest/functions/  overdue-scan  reminder-scan  stale-detector  notify
 ```
 
 ## 7. Definition of Done
 
 - Activity timeline shows system-wide + scoped history grouped by day with pagination; entity tabs (business/pipeline/member Activity) all read it.
 - Global search (⌘K + results page) returns grouped, deep-linking results across the four entity types.
-- Notifications generate from real events, badge the bell, and Mark All Read works.
+- Notifications generate from real domain events in server actions, badge the bell, and Mark All Read works.
 - Settings persist and drive the shared currency/date/timezone formatters; deactivation reasons admin add/edit/disable works and respects history.
-- Inngest dev server runs the four jobs; overdue/reminder notifications fire; stale detector flags (never deactivates); functions are idempotent and signed in prod.
-- `/api/inngest` deploys on Vercel and registers functions.
+- Overdue/stale remain derived at read time; no auto-deactivation.
 
 ## 8. What NOT To Do
 
@@ -175,10 +146,9 @@ src/lib/inngest/functions/  overdue-scan  reminder-scan  stale-detector  notify
 - Do **not** hard-delete notifications/activity or purge history.
 - Do **not** let deactivation-reason disable break historical references — hide from new use only.
 - Do **not** allow editing the fixed six-phase workflow in Settings (display-only).
-- Do **not** run heavy scans inline in request handlers — use Inngest scheduled functions.
-- Do **not** expose Inngest signing keys or run unsigned functions in production.
+- Do **not** introduce a background job runner for this phase — keep notification fan-out in server actions.
 
 ## 9. Dependencies / Enables
 
-- **Depends on:** all prior phases (events to react to, data to search/aggregate); PHASE_1 (Inngest wired), PHASE_2 (bell/search slots), PHASE_4 (ActivityLog), PHASE_5 (deactivation reasons).
+- **Depends on:** all prior phases (events to react to, data to search/aggregate); PHASE_1 (foundation), PHASE_2 (bell/search slots), PHASE_4 (ActivityLog), PHASE_5 (deactivation reasons).
 - **Enables:** v1 feature-complete. Next: hardening, E2E tests, and Vercel production deploy.

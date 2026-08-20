@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { PageHeader } from "@/components/common/page-header";
 import { QueryGate } from "@/components/common/query-gate";
+import { ResourceDetailSkeleton } from "@/components/common/skeletons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { resourceQueries } from "@/features/resources/api";
@@ -17,7 +18,12 @@ export function ResourceFullscreenView({ id }: { id: string }) {
   const sizeLabel = resource ? humanFileSize(resource.sizeBytes) : null;
 
   return (
-    <QueryGate isPending={query.isPending} isError={query.isError} error={query.error}>
+    <QueryGate
+      isPending={query.isPending}
+      isError={query.isError}
+      error={query.error}
+      skeleton={<ResourceDetailSkeleton />}
+    >
       {resource ? (
         <div className="flex min-h-0 flex-1 flex-col gap-4">
           <PageHeader

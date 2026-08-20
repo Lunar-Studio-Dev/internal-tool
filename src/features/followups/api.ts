@@ -22,3 +22,12 @@ export function useCompleteFollowUp() {
     onSuccess: () => invalidateFollowUps(queryClient),
   });
 }
+
+export function useUpdateFollowUp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: unknown }) =>
+      api<MutationOk>(`/api/follow-ups/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+    onSuccess: () => invalidateFollowUps(queryClient),
+  });
+}

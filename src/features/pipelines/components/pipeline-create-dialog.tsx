@@ -11,8 +11,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/common/empty-state";
+import { FormCardSkeleton } from "@/components/common/skeletons";
 import { pipelineQueries } from "@/features/pipelines/api";
 import { CreatePipelineForm } from "@/features/pipelines/components/create-pipeline-form";
+import { AlertCircleIcon } from "lucide-react";
 
 export function PipelineCreateDialog({
   trigger,
@@ -38,7 +41,14 @@ export function PipelineCreateDialog({
           </DialogDescription>
         </DialogHeader>
         {options.isPending ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <FormCardSkeleton fields={4} />
+        ) : options.isError ? (
+          <EmptyState
+            icon={AlertCircleIcon}
+            title="Could not load options"
+            description={options.error?.message ?? "Try again."}
+            className="p-6"
+          />
         ) : (
           <CreatePipelineForm
             businesses={options.data?.businesses ?? []}
