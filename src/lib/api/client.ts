@@ -1,3 +1,5 @@
+import { hangQuery, isAbortError } from "@/lib/api/abort";
+
 export type Jsonify<T> = T extends Date
   ? string
   : T extends Array<infer U>
@@ -31,29 +33,47 @@ async function parseBody(res: Response): Promise<unknown> {
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const signal = init?.signal;
+  const cancellable = Boolean(signal);
+
+  if (signal?.aborted) {
+    return hangQuery<T>();
+  }
+
   const headers = new Headers(init?.headers);
   if (init?.body && !headers.has("content-type")) {
     headers.set("content-type", "application/json");
   }
 
-  const res = await fetch(path, {
-    ...init,
-    credentials: "include",
-    headers,
-  });
+  try {
+    const res = await fetch(path, {
+      ...init,
+      credentials: "include",
+      headers,
+    });
 
-  const body = (await parseBody(res)) as ApiSuccess<T> | ApiFailure | null;
+    if (signal?.aborted) {
+      return hangQuery<T>();
+    }
 
-  if (!res.ok) {
-    const message =
-      body && typeof body === "object" && "error" in body && body.error
-        ? body.error
-        : res.statusText || "Request failed";
-    throw new ApiError(res.status, message, body);
+    const body = (await parseBody(res)) as ApiSuccess<T> | ApiFailure | null;
+
+    if (!res.ok) {
+      const message =
+        body && typeof body === "object" && "error" in body && body.error
+          ? body.error
+          : res.statusText || "Request failed";
+      throw new ApiError(res.status, message, body);
+    }
+
+    if (body && typeof body === "object" && "data" in body) {
+      return (body as ApiSuccess<T>).data;
+    }
+    return body as T;
+  } catch (error) {
+    if (cancellable && isAbortError(error)) {
+      return hangQuery<T>();
+    }
+    throw error;
   }
-
-  if (body && typeof body === "object" && "data" in body) {
-    return (body as ApiSuccess<T>).data;
-  }
-  return body as T;
 }

@@ -5,8 +5,10 @@ import {
 } from "@tanstack/react-query";
 
 import { ApiError } from "@/lib/api/client";
+import { isAbortError } from "@/lib/api/abort";
 
 function shouldRetryQuery(failureCount: number, error: Error) {
+  if (isAbortError(error)) return false;
   if (error instanceof ApiError && error.status >= 400 && error.status < 500) return false;
   return failureCount < 1;
 }

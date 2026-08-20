@@ -10,6 +10,7 @@ import {
   resourceFilePath,
 } from "@/features/resources/constants";
 import type { ResourceType } from "@/generated/prisma/enums";
+import { hangQuery, isAbortError } from "@/lib/api/abort";
 import { cn } from "@/lib/utils";
 import { queryKeys } from "@/lib/query/keys";
 
@@ -34,9 +35,15 @@ function TextPreview({ id, url }: { id: string; url: string }) {
   const query = useQuery({
     queryKey: queryKeys.resources.fileText(id),
     queryFn: async ({ signal }) => {
-      const res = await fetch(url, { credentials: "include", signal });
-      if (!res.ok) throw new Error("Could not load file.");
-      return res.text();
+      if (signal.aborted) return hangQuery<string>();
+      try {
+        const res = await fetch(url, { credentials: "include", signal });
+        if (!res.ok) throw new Error("Could not load file.");
+        return res.text();
+      } catch (error) {
+        if (isAbortError(error)) return hangQuery<string>();
+        throw error;
+      }
     },
   });
 
