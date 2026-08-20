@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
-import { MetricCard } from "@/components/common/metric-card";
+import { MetricCard, METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import { QueryGate } from "@/components/common/query-gate";
 import { TablePageSkeleton } from "@/components/common/skeletons";
 import { Button } from "@/components/ui/button";
@@ -142,7 +142,7 @@ export function BusinessTable() {
       skeleton={<TablePageSkeleton columns={6} />}
     >
     <div className="flex flex-col gap-4">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className={METRIC_GRID_CLASS}>
         <MetricCard
           icon={Building2Icon}
           label="Total businesses"

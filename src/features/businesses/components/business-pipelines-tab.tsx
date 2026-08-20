@@ -16,7 +16,7 @@ import {
 
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
 import { EmptyState } from "@/components/common/empty-state";
-import { MetricCard } from "@/components/common/metric-card";
+import { MetricCard, MetricCardSkeleton, METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import { QuerySection } from "@/components/common/query-gate";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -202,12 +202,10 @@ export function BusinessPipelinesTab({
       isError={pipelinesQuery.isError}
       error={pipelinesQuery.error}
       skeleton={
-        <div className="flex flex-col gap-4">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-24 rounded-lg border bg-muted/30" />
-            ))}
-          </div>
+        <div className={METRIC_GRID_CLASS}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <MetricCardSkeleton key={i} />
+          ))}
         </div>
       }
       errorTitle="Could not load pipelines"
@@ -235,7 +233,7 @@ export function BusinessPipelinesTab({
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className={METRIC_GRID_CLASS}>
             <MetricCard
               icon={ActivityIcon}
               label="Active"

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CreditCardIcon, FileTextIcon } from "lucide-react";
 
+import { MetricCardSkeleton, METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import { ActivityList } from "@/components/common/activity-list";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
@@ -58,17 +59,9 @@ function TabPanelSkeleton({ variant }: { variant: "form" | "list" | "activity" }
   }
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className={METRIC_GRID_CLASS}>
         {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i}>
-            <CardContent className="flex items-start gap-3 pt-4">
-              <Skeleton className="size-8 rounded-md" />
-              <div className="flex flex-1 flex-col gap-2">
-                <Skeleton className="h-3 w-16" />
-                <Skeleton className="h-5 w-10" />
-              </div>
-            </CardContent>
-          </Card>
+          <MetricCardSkeleton key={i} />
         ))}
       </div>
       <div className="flex flex-wrap gap-2">

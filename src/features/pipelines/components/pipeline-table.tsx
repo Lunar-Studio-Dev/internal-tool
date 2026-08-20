@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
-import { MetricCard } from "@/components/common/metric-card";
+import { MetricCard, MetricCardSkeleton, METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import { QueryGate } from "@/components/common/query-gate";
 import { TablePageSkeleton } from "@/components/common/skeletons";
 import { StatusBadge } from "@/components/common/status-badge";
@@ -151,7 +151,7 @@ export function PipelineTable() {
       skeleton={<TablePageSkeleton columns={6} />}
     >
     <div className="flex flex-col gap-4">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className={METRIC_GRID_CLASS}>
         <MetricCard
           icon={ActivityIcon}
           label="Active"

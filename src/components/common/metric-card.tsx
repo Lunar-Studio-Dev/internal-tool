@@ -5,6 +5,19 @@ import type { ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
+/** 2×2 on mobile/tablet, single row of 4 on xl+. */
+export const METRIC_GRID_CLASS = "grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4";
+
+export function MetricGrid({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <div className={cn(METRIC_GRID_CLASS, className)}>{children}</div>;
+}
+
 export function MetricCard({
   label,
   value,
@@ -44,14 +57,18 @@ export function MetricCard({
           : undefined
       }
     >
-      <CardContent className="flex items-start gap-3 pt-4">
-        <div className="rounded-md bg-muted p-2">
-          <Icon className="size-4 text-muted-foreground" />
+      <CardContent className="flex items-start gap-2 pt-3 sm:gap-3 sm:pt-4">
+        <div className="shrink-0 rounded-md bg-muted p-1.5 sm:p-2">
+          <Icon className="size-3.5 text-muted-foreground sm:size-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-sm font-semibold">{value}</p>
-          {hint ? <p className="truncate text-xs text-muted-foreground">{hint}</p> : null}
+          <p className="text-[11px] leading-tight text-muted-foreground sm:text-xs">{label}</p>
+          <p className="text-sm font-semibold tabular-nums">{value}</p>
+          {hint ? (
+            <p className="line-clamp-2 text-[11px] text-muted-foreground sm:truncate sm:text-xs">
+              {hint}
+            </p>
+          ) : null}
         </div>
       </CardContent>
     </Card>
@@ -61,8 +78,8 @@ export function MetricCard({
 export function MetricCardSkeleton() {
   return (
     <Card>
-      <CardContent className="flex items-start gap-3 pt-4">
-        <div className="size-8 rounded-md bg-muted" />
+      <CardContent className="flex items-start gap-2 pt-3 sm:gap-3 sm:pt-4">
+        <div className="size-7 shrink-0 rounded-md bg-muted sm:size-8" />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <div className="h-3 w-24 rounded bg-muted" />
           <div className="h-5 w-10 rounded bg-muted" />

@@ -1,6 +1,5 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import {
   FileTextIcon,
@@ -10,8 +9,8 @@ import {
   PlusIcon,
 } from "lucide-react";
 
+import { MetricCard, METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { UploadDialog } from "@/features/resources/components/upload-dialog";
 import { ResourceList, type ResourceListItem } from "@/features/resources/components/resource-list";
 import {
@@ -21,33 +20,6 @@ import {
 } from "@/features/resources/resource-metrics";
 import type { PhaseType } from "@/generated/prisma/enums";
 import { cn } from "@/lib/utils";
-
-function MetricCard({
-  label,
-  value,
-  hint,
-  icon: Icon,
-}: {
-  label: string;
-  value: ReactNode;
-  hint?: string;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
-  return (
-    <Card>
-      <CardContent className="flex items-start gap-3 pt-4">
-        <div className="rounded-md bg-muted p-2">
-          <Icon className="size-4 text-muted-foreground" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-sm font-semibold">{value}</p>
-          {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 const FILTERS: { value: ResourceFilter; label: string }[] = [
   { value: "all", label: "All" },
@@ -88,7 +60,7 @@ export function PipelineResourcesTab({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className={METRIC_GRID_CLASS}>
         <MetricCard icon={FolderOpenIcon} label="Total" value={metrics.total} />
         <MetricCard
           icon={LayersIcon}

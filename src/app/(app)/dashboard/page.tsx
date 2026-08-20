@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Building2Icon, ListTodoIcon, WalletIcon, WorkflowIcon } from "lucide-react";
 
 import { PageHeader } from "@/components/common/page-header";
+import { METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import {
   Card,
   CardContent,
@@ -31,7 +32,7 @@ export default async function DashboardPage() {
         description="Your client management overview. Live metrics arrive as later phases land."
         breadcrumbs={[{ label: "Dashboard" }]}
       />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={METRIC_GRID_CLASS}>
         {STATS.map((stat) => (
           <Card key={stat.label}>
             <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">

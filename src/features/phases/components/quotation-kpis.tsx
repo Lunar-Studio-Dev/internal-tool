@@ -1,6 +1,5 @@
 "use client";
 
-import type { ReactNode } from "react";
 import {
   CalendarClockIcon,
   CheckCircle2Icon,
@@ -9,7 +8,7 @@ import {
   WalletIcon,
 } from "lucide-react";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { MetricCard, METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import type { PipelineDecisionDto, QuotationDto } from "@/features/phases/api";
 import { formatINR } from "@/features/phases/constants";
 import {
@@ -17,59 +16,6 @@ import {
   computeQuotationKpis,
 } from "@/features/phases/quotation-metrics";
 import type { PaymentStatusDto } from "@/features/payments/api";
-import { cn } from "@/lib/utils";
-
-function MetricCard({
-  label,
-  value,
-  hint,
-  icon: Icon,
-  tone,
-  onClick,
-}: {
-  label: string;
-  value: ReactNode;
-  hint?: string | null;
-  icon: React.ComponentType<{ className?: string }>;
-  tone?: "default" | "warning" | "success";
-  onClick?: () => void;
-}) {
-  const interactive = Boolean(onClick);
-
-  return (
-    <Card
-      className={cn(
-        tone === "warning" && "border-amber-500/40",
-        tone === "success" && "border-emerald-500/40",
-        interactive && "cursor-pointer transition-colors hover:bg-muted/40",
-      )}
-      onClick={onClick}
-      role={interactive ? "button" : undefined}
-      tabIndex={interactive ? 0 : undefined}
-      onKeyDown={
-        interactive
-          ? (event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                onClick?.();
-              }
-            }
-          : undefined
-      }
-    >
-      <CardContent className="flex items-start gap-3 pt-4">
-        <div className="rounded-md bg-muted p-2">
-          <Icon className="size-4 text-muted-foreground" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-sm font-semibold">{value}</p>
-          {hint ? <p className="truncate text-xs text-muted-foreground">{hint}</p> : null}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 export function QuotationKpis({
   quotations,
@@ -96,7 +42,7 @@ export function QuotationKpis({
         : "default";
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className={METRIC_GRID_CLASS}>
       <MetricCard
         icon={IndianRupeeIcon}
         label="Contract value"

@@ -1,6 +1,5 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
@@ -12,43 +11,13 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { MetricCard, METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import { TaskList, type TaskRow } from "@/features/tasks/components/task-list";
 import { TaskFormDialog } from "@/features/tasks/components/task-form-dialog";
 import type { TaskFormInitial } from "@/features/tasks/components/task-form";
 import { computeTaskMetrics, filterTasks, type TaskFilter } from "@/features/tasks/task-metrics";
 import type { PhaseType } from "@/generated/prisma/enums";
 import { Priority, type TaskStatus } from "@/generated/prisma/enums";
-import { cn } from "@/lib/utils";
-
-function MetricCard({
-  label,
-  value,
-  hint,
-  icon: Icon,
-  tone,
-}: {
-  label: string;
-  value: ReactNode;
-  hint?: string;
-  icon: React.ComponentType<{ className?: string }>;
-  tone?: "default" | "warning";
-}) {
-  return (
-    <Card className={cn(tone === "warning" && value !== "0" && value !== 0 && "border-amber-500/40")}>
-      <CardContent className="flex items-start gap-3 pt-4">
-        <div className="rounded-md bg-muted p-2">
-          <Icon className="size-4 text-muted-foreground" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-sm font-semibold">{value}</p>
-          {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 const FILTERS: { value: TaskFilter; label: string }[] = [
   { value: "all", label: "All" },
@@ -92,7 +61,7 @@ export function PipelineTasksTab({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className={METRIC_GRID_CLASS}>
         <MetricCard icon={ListTodoIcon} label="Open" value={metrics.open} />
         <MetricCard
           icon={AlertCircleIcon}
