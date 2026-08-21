@@ -67,7 +67,12 @@ export function EarningsVsExpensesChart() {
             <ChartTooltip
               content={
                 <ChartTooltipContent
-                  formatter={(value) => formatINR(Number(value))}
+                  formatter={(value, name) => {
+                    const amount = formatINR(Number(value));
+                    if (name === "earning") return `+ ${amount}`;
+                    if (name === "expense") return `− ${amount}`;
+                    return amount;
+                  }}
                 />
               }
             />
