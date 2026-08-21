@@ -136,6 +136,11 @@ export function PaymentPendingPanel({
             ) : null}
           </div>
 
+          {deactivated ? (
+            <p className="text-sm text-muted-foreground">
+              This pipeline is deactivated. Reactivate it to record payments.
+            </p>
+          ) : null}
           {status.awaitingInitial ? (
             <p className="text-sm text-muted-foreground">
               Initial payment ({formatINR(status.initialRequiredPaise)}) unlocks Project Management

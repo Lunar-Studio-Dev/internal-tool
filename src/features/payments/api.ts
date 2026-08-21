@@ -2,7 +2,7 @@ import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query
 
 import type { PaymentItem, PaymentStatus } from "@/features/payments/server/payments.queries";
 import { api, type Jsonify } from "@/lib/api/client";
-import { invalidateBusinesses, invalidatePipelines } from "@/lib/query/invalidate";
+import { invalidateAccounts, invalidateBusinesses, invalidatePipelines } from "@/lib/query/invalidate";
 import { queryKeys } from "@/lib/query/keys";
 
 export type PaymentStatusDto = Jsonify<PaymentStatus>;
@@ -21,6 +21,7 @@ async function invalidatePaymentWrites(
   await Promise.all([
     invalidatePipelines(queryClient),
     invalidateBusinesses(queryClient),
+    invalidateAccounts(queryClient),
     queryClient.invalidateQueries({ queryKey: queryKeys.pipelines.payments(pipelineId) }),
     queryClient.invalidateQueries({ queryKey: queryKeys.pipelines.paymentStatus(pipelineId) }),
     queryClient.invalidateQueries({ queryKey: queryKeys.pipelines.phases(pipelineId) }),

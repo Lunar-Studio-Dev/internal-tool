@@ -112,14 +112,31 @@ export function useDeactivatePipeline() {
   });
 }
 
-export function useCompletePipeline() {
+export function useReactivatePipeline() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { pipelineId: string; notes?: string }) =>
-      api<MutationOk>(`/api/pipelines/${input.pipelineId}/complete`, {
+      api<MutationOk>(`/api/pipelines/${input.pipelineId}/reactivate`, {
         method: "POST",
         body: JSON.stringify({ notes: input.notes }),
       }),
     onSuccess: () => invalidatePipelineWrites(queryClient),
+  });
+}
+
+export function useCompletePipeline() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { pipelineId: string; notes?: string }) => {
+      const result = await api<MutationOk>(`/api/pipelines/${input.pipelineId}/complete`, {
+        method: "POST",
+        body: JSON.stringify({ notes: input.notes }),
+      });
+      await Promise.all([
+        invalidatePipelineWrites(queryClient),
+        queryClient.refetchQueries({ queryKey: queryKeys.pipelines.detail(input.pipelineId) }),
+      ]);
+      return result;
+    },
   });
 }

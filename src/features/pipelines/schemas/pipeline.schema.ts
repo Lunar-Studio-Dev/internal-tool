@@ -30,3 +30,8 @@ export const completePipelineSchema = z.object({
   pipelineId: z.string().min(1),
   notes: optionalText(1000),
 });
+
+export const reactivatePipelineSchema = z.object({
+  pipelineId: z.string().min(1),
+  notes: optionalText(1000),
+});

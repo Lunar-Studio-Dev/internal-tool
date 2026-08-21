@@ -5,12 +5,14 @@ import {
   completePipelineSchema,
   deactivatePipelineSchema,
   promotePipelineSchema,
+  reactivatePipelineSchema,
 } from "@/features/pipelines/schemas/pipeline.schema";
 import { nextPipelineCode } from "@/features/pipelines/server/code-generator";
 import {
   completePipeline,
   deactivatePipeline,
   promotePhase,
+  reactivatePipeline,
 } from "@/features/pipelines/server/state-machine";
 import { Prisma } from "@/generated/prisma/client";
 import { PhaseStatus, PhaseType, PipelineStatus } from "@/generated/prisma/enums";
@@ -129,6 +131,26 @@ export async function deactivatePipelineAction(input: unknown): Promise<ActionRe
     return { ok: true };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Could not deactivate the pipeline." };
+  }
+}
+
+export async function reactivatePipelineAction(input: unknown): Promise<ActionResult> {
+  const member = await requirePermission("pipeline:write");
+
+  const parsed = reactivatePipelineSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  try {
+    await reactivatePipeline({
+      pipelineId: parsed.data.pipelineId,
+      actorId: member.id,
+      notes: parsed.data.notes || undefined,
+    });
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not reactivate the pipeline." };
   }
 }
 

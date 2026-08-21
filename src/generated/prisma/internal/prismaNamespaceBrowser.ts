@@ -169,6 +169,10 @@ export const PipelineScalarFieldEnum = {
   deactivationReasonId: 'deactivationReasonId',
   deactivatedAt: 'deactivatedAt',
   deactivatedById: 'deactivatedById',
+  reactivatedAt: 'reactivatedAt',
+  reactivatedById: 'reactivatedById',
+  deactivationCount: 'deactivationCount',
+  reactivationCount: 'reactivationCount',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -353,6 +357,7 @@ export const TransactionScalarFieldEnum = {
   amount: 'amount',
   date: 'date',
   category: 'category',
+  expenseCategory: 'expenseCategory',
   description: 'description',
   businessId: 'businessId',
   pipelineId: 'pipelineId',

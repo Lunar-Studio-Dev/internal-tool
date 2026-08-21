@@ -146,6 +146,17 @@ export const TransactionType = {
 export type TransactionType = (typeof TransactionType)[keyof typeof TransactionType]
 
 
+export const ExpenseCategory = {
+  SOFTWARE: 'SOFTWARE',
+  MARKETING: 'MARKETING',
+  OPERATIONS: 'OPERATIONS',
+  SALARY: 'SALARY',
+  OTHER: 'OTHER'
+} as const
+
+export type ExpenseCategory = (typeof ExpenseCategory)[keyof typeof ExpenseCategory]
+
+
 export const PaymentMethod = {
   BANK_TRANSFER: 'BANK_TRANSFER',
   UPI: 'UPI',

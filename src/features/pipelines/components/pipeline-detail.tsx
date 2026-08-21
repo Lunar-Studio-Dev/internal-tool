@@ -3,7 +3,7 @@
 import { format } from "date-fns";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CreditCardIcon, FileTextIcon } from "lucide-react";
+import { CreditCardIcon, FileTextIcon, RotateCcwIcon } from "lucide-react";
 
 import { MetricCardSkeleton, METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import { ActivityList } from "@/components/common/activity-list";
@@ -19,6 +19,7 @@ import {
 } from "@/components/common/skeletons";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   SectionTabs,
   SectionTabsList,
@@ -35,6 +36,7 @@ import { paymentQueries } from "@/features/payments/api";
 import { PaymentPendingPanel } from "@/features/payments/components/payment-pending-panel";
 import { pipelineQueries } from "@/features/pipelines/api";
 import { PipelineActions } from "@/features/pipelines/components/pipeline-actions";
+import { ReactivationDialog } from "@/features/pipelines/components/reactivation-dialog";
 import { BusinessAtAGlance } from "@/features/pipelines/components/business-at-a-glance";
 import { PipelineFollowUpsTab } from "@/features/pipelines/components/pipeline-followups-tab";
 import { PipelineResourcesTab } from "@/features/pipelines/components/pipeline-resources-tab";
@@ -169,8 +171,15 @@ export function PipelineDetail({ id }: { id: string }) {
               steps={WORKABLE_PHASES.map((p) => PHASE_LABELS[p])}
               currentStep={stepperIndex}
               deactivated={deactivated}
+              completed={completed}
+              handedOff={pipeline.handedOff}
               paymentPending={paymentPending}
               phaseStartedAt={current?.startedAt ? new Date(current.startedAt) : null}
+              reactivatedAt={
+                pipeline.reactivationCount > 0 && pipeline.reactivatedAt
+                  ? new Date(pipeline.reactivatedAt)
+                  : null
+              }
             />
 
             <SectionTabs value={tab} onValueChange={setTab} className="gap-4">
@@ -218,6 +227,19 @@ export function PipelineDetail({ id }: { id: string }) {
                     compact
                     className="w-full shrink-0 lg:w-auto"
                   />
+                ) : canWrite ? (
+                  <ReactivationDialog
+                    pipelineId={pipeline.id}
+                    businessName={pipeline.business.name}
+                    pipelineCode={pipeline.code}
+                    resumePhaseLabel={PHASE_LABELS[pipeline.currentPhase]}
+                    trigger={
+                      <Button size="sm" className="w-full shrink-0 lg:w-auto">
+                        <RotateCcwIcon className="size-4" />
+                        Reactivate
+                      </Button>
+                    }
+                  />
                 ) : null}
               </div>
 
@@ -243,6 +265,14 @@ export function PipelineDetail({ id }: { id: string }) {
                             ? format(new Date(pipeline.deactivatedAt), "d MMM yyyy")
                             : "—"}
                         </span>
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-xs text-muted-foreground">Times deactivated</span>
+                        <span>{pipeline.deactivationCount}</span>
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-xs text-muted-foreground">Times reactivated</span>
+                        <span>{pipeline.reactivationCount}</span>
                       </div>
                     </CardContent>
                   </Card>

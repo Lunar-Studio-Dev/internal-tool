@@ -1,4 +1,5 @@
 import { hangQuery, isAbortError } from "@/lib/api/abort";
+import { httpStatusFallback, sanitizeErrorMessage } from "@/lib/api/errors";
 
 export type Jsonify<T> = T extends Date
   ? string
@@ -28,7 +29,7 @@ async function parseBody(res: Response): Promise<unknown> {
   try {
     return JSON.parse(text);
   } catch {
-    return { error: text };
+    return { error: sanitizeErrorMessage(text, res.status) };
   }
 }
 
@@ -59,11 +60,11 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const body = (await parseBody(res)) as ApiSuccess<T> | ApiFailure | null;
 
     if (!res.ok) {
-      const message =
+      const rawMessage =
         body && typeof body === "object" && "error" in body && body.error
-          ? body.error
+          ? String(body.error)
           : res.statusText || "Request failed";
-      throw new ApiError(res.status, message, body);
+      throw new ApiError(res.status, sanitizeErrorMessage(rawMessage, res.status), body);
     }
 
     if (body && typeof body === "object" && "data" in body) {
@@ -74,6 +75,12 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     if (cancellable && isAbortError(error)) {
       return hangQuery<T>();
     }
-    throw error;
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    if (error instanceof TypeError && /fetch/i.test(error.message)) {
+      throw new ApiError(0, "Could not reach the server. Check your connection and try again.");
+    }
+    throw new ApiError(500, httpStatusFallback(500));
   }
 }

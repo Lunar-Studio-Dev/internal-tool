@@ -1,153 +1,208 @@
 # Phase 9 — Pipeline Lifecycle: Reactivation & Re-entry
 
-> Depends on PHASE_8 (full phase machine + payment). Completes the "business returns" story: deactivated-pipeline views, the continue-vs-new decision, reactivation resuming at the previous phase, and preserved history.
+> Depends on PHASE_8 (full phase machine + payment). Completes the "business returns" story: a deactivated pipeline can be **reactivated** and resumes at the phase it was stopped at, the number of deactivate/reactivate cycles is tracked, and payment stays locked until the pipeline is active again. **Strictly reuses existing UI — no new screens, no new patterns.**
 
 ## 1. Objective
 
-Handle returning businesses and dead-but-not-deleted pipelines. A deactivated pipeline can be reactivated and resumes at its previous phase (never restarts); a genuinely new opportunity gets a new pipeline; requirement changes and quotation revisions stay on the same pipeline. Payment arriving after deactivation reactivates → records payment → promotes (no forced new pipeline).
+Handle returning businesses and dead-but-not-deleted pipelines. A deactivated pipeline can be reactivated and resumes at its **previous (current) phase** — it never restarts at Discovery. A genuinely new opportunity gets a new pipeline via the existing create flow. Payment arriving after deactivation follows: reactivate → payment unlocks → record → auto-promote to Project Management. Every deactivate/reactivate cycle is counted on the pipeline for history and analytics (PHASE_11).
 
 ## 2. Scope of Work (In Scope)
 
-- Deactivated Pipeline detail with deactivation details + preserved-history summary — WF-29.
-- Returning Business decision screen: list previous pipelines, choose Continue Existing vs Create New — WF-30.
-- Reactivation confirmation (DEACTIVATED → ACTIVE at previous phase, with notes) — WF-31.
-- New Pipeline from existing business (reuses business info, starts at Discovery) — WF-32.
-- Pipeline History table per business (final phase/status/created) — WF-33.
-- `reactivatePipeline()` service; decision rules engine; payment-after-deactivation path (reactivate → record payment (PHASE_8) → promote).
+- Track **how many times** a pipeline has been deactivated and reactivated (DB counters) — review point #1.
+- `reactivatePipeline()` state-machine service: `DEACTIVATED → ACTIVE`, restore the stopped phase, stamp `reactivatedAt/ById`, increment `reactivationCount`, log the event.
+- Reactivation confirmation dialog (notes-only) — mirrors the existing `deactivate-dialog.tsx` — WF-31.
+- Surface reactivation **only through existing UI** (review point #2):
+  - Pipeline detail: Reactivate action in the existing header action slot (empty today when deactivated); deactivation/reactivation counts added to the existing "Deactivated" Overview card — WF-29.
+  - Business detail → Pipelines tab: the existing pipelines DataTable already serves as pipeline history (WF-33) and the existing `PipelineCreateDialog` already serves "new pipeline for this business" (WF-32); add a **Reactivate row action** for `DEACTIVATED` rows, mirroring the existing Complete row action — WF-30/33.
+- Payment-after-deactivation gate (review point #3): keep payment locked while deactivated; add an explicit guard message + a muted hint.
+
+### Out of scope / explicitly NOT built (reuse-first)
+
+- No standalone "Returning business decision" screen — the business Pipelines tab already lists full history + New pipeline + open-to-reactivate.
+- No new `pipeline-history` / `new-pipeline-from-business` / `returning-decision` components.
+- No mobile layout changes — tabs stay the existing `SectionTabs` dropdown (`<Select>` under `md`).
 
 ## 3. Requirements
 
 ### Functional
-1. Deactivated pipeline detail shows Stopped At, Deactivated On/By, Reason, Notes, and preserved counts (resources/tasks/quotations/activities); offers Reactivate or Create New — WF-29.
-2. On a business's return, show existing business + full pipeline history and the two choices — WF-30.
-3. Reactivate resumes the **same** pipeline at its previous phase (status → ACTIVE), records reactivation as an event/activity (REACTIVATED is an action, not a stored status) — WF-31; the previously-active phase becomes ACTIVE again.
-4. Create New Pipeline starts a fresh opportunity at Discovery; old pipelines remain untouched — WF-32.
-5. Decision rules: requirement change = same pipeline (update, keep history); new/different opportunity = new pipeline; quotation revision = new version, same pipeline; if multiple pipelines exist the user must choose which to continue; multiple active pipelines allowed — CONTEXT rules #10/#11/#12.
-6. Payment after deactivation: reactivate → record payment (PHASE_8) → promote to Project (no forced new pipeline).
-7. Pipeline History lists all pipelines for the business with final phase/status/created — WF-33.
+1. **Cycle counters** — `Pipeline.deactivationCount` and `Pipeline.reactivationCount` track how many times the pipeline was deactivated/reactivated. Deactivate increments the former; reactivate increments the latter. Existing deactivated pipelines are backfilled to `deactivationCount = 1` — review point #1.
+2. Reactivate resumes the **same** pipeline at the phase it was stopped at (`currentPhase` is preserved through deactivation), flips `status → ACTIVE`, and re-activates that phase row (`PhaseStatus.DEACTIVATED → ACTIVE`) — WF-31.
+3. Reactivation is recorded as an activity (`pipeline.reactivated`) plus `reactivatedAt` / `reactivatedById` stamps. **No** new `PipelineStatus` value — REACTIVATED is an event, not a stored status.
+4. Reactivation entry points are the existing header action slot (pipeline detail) and a Reactivate row action in the business Pipelines tab — no new screens (review point #2).
+5. "Create New Pipeline" for a returning business is the **existing** `PipelineCreateDialog` (pre-filled `businessId`, starts at Discovery); prior pipelines are untouched — WF-32.
+6. Pipeline history per business is the **existing** business Pipelines DataTable (code / opportunity / phase / status / decision / value / created) — WF-33.
+7. **Payment stays locked while deactivated** and reopens only after reactivation — review point #3. Path: reactivate → record initial payment (PHASE_8) → auto-promote to Project Management.
 
 ### Non-Functional
-- Reactivation is transactional and idempotent-safe (double-click cannot double-activate).
-- No historical data is destroyed on reactivation; old quotation versions, resources, tasks, activities remain intact and linked.
-- REACTIVATED is represented via `ActivityLog` + a `reactivatedAt`/`reactivatedById` stamp, not a new pipeline status enum value.
+- Reactivation is transactional; the status guard (`status === DEACTIVATED`) inside the transaction prevents a double-submit from double-activating or double-incrementing the counter (mirrors the existing deactivate guard).
+- No historical data is destroyed on reactivation — quotations, resources, tasks, follow-ups, activity, payments and the prior deactivation stamps all remain intact.
+- Strict UI reuse: only existing shared components (`SectionTabs`, `DataTable`, `Dialog`, `MetricCard`, `StatusBadge`, `FieldLabel/FieldError`, `PageHeader`) and existing API/TanStack-Query conventions are used.
 
 ## 4. End-to-End User Flow
 
 ```text
-Business returns → Returning decision (WF-30)
-   ├─ Continue Existing → pick pipeline → Deactivated detail (WF-29) → Reactivate (WF-31)
-   │        └─ status DEACTIVATED → ACTIVE, resume previous phase (history preserved)
-   └─ Create New → New Pipeline from business (WF-32) → Discovery ACTIVE (old ones untouched)
+Business returns → Business detail ▸ Pipelines tab (existing DataTable = history)
+   ├─ Continue existing → open a DEACTIVATED pipeline  OR  use the row's Reactivate action
+   │        → Reactivation dialog (WF-31) → status DEACTIVATED→ACTIVE, resume stopped phase
+   └─ New opportunity → existing "New pipeline" dialog (businessId prefilled) → Discovery ACTIVE
 
-Payment-after-deactivation: Deactivated (WF-29) → Reactivate (WF-31) → Record Payment (PHASE_8) → Project
+Payment-after-deactivation:
+   Deactivated pipeline → Reactivate (WF-31) → Payments tab unlocks → Record payment (PHASE_8) → auto-promote → Project
 ```
 
-## 5. Wireframes
+## 5. Wireframes (Desktop + Mobile)
 
-**WF-29 — Deactivated Pipeline Detail**
+### WF-29 — Deactivated Pipeline Detail (existing `pipeline-detail.tsx`)
+
+Desktop — header action slot (empty today when deactivated) now holds Reactivate; Overview "Deactivated" card gains count cells:
 ```text
-ABC Corporation · Website Redesign                    [■ DEACTIVATED]
-[ ①→②→③→④→⑤→⑥ stepper (WF-04) ]
-┌ DEACTIVATION DETAILS ─ Stopped At Quotation · On 15 Aug · By John · Reason Price too high
-                         Notes: Client may reconsider ┐
-┌ PRESERVED HISTORY ─ Discovery✓ Business✓ Requirement✓ Quotation✓
-                      Resources 8 · Tasks 12 · Quotations 3 · Activities 31 ┐
-        [ Reactivate Pipeline ]          [ Create New Pipeline ]
+ABC Corporation · Website Redesign · PL-00123                    [■ DEACTIVATED]
+[ Discovery→Business→Requirement→Quotation→Project  (stepper, deactivated styling) ]
+┌ tabs: Overview Details Tasks Follow-ups Resources Quotation Payments Activity ┐   [ ↻ Reactivate ]
+│ ── Overview ─────────────────────────────────────────────────────────────── │
+│ ┌ Deactivated ───────────────────────────────────────────────────────────┐  │
+│ │ Reason: Price too high   By: John D.   On: 15 Aug 2026                   │  │
+│ │ Times deactivated: 2     Times reactivated: 1                            │  │
+│ └──────────────────────────────────────────────────────────────────────────┘ │
+│ (normal overview cards below — unchanged)                                     │
+└───────────────────────────────────────────────────────────────────────────── ┘
 ```
 
-**WF-30 — Returning Business Decision**
+Mobile (tabs collapse to the existing `<Select>` dropdown; Reactivate button is full-width `w-full` under the tab select — same slot/classes as `PipelineActions`):
 ```text
-ABC Corporation Returns — Existing Business Found ✓
-PREVIOUS PIPELINES:
- #001 ERP Automation  Requirement  ACTIVE
- #002 Website         Quotation    DEACTIVATED
- #003 AI Automation   Discovery    DEACTIVATED
-┌ CONTINUE EXISTING ─ select [#002 Website ▾] [Continue Pipeline] ┐
-┌ CREATE NEW ─ new opportunity starts at Discovery [Create New Pipeline] ┐
+ABC · Website Redesign
+PL-00123                       [■ DEACTIVATED]
+[ ===== stepper (scrolls) ===== ]
+[ Overview ▾ ]        ← SectionTabs dropdown (unchanged)
+[ ↻ Reactivate            (full width) ]
+┌ Deactivated ───────────────────────────┐
+│ Reason: Price too high                  │
+│ By: John D.      On: 15 Aug 2026        │
+│ Times deactivated: 2  reactivated: 1    │
+└─────────────────────────────────────────┘
 ```
 
-**WF-31 — Reactivation Confirmation**
+### WF-31 — Reactivation Dialog (new `reactivation-dialog.tsx`, mirrors `deactivate-dialog.tsx`, `sm:max-w-md`)
 ```text
-Reactivate Pipeline
-Business ABC · Pipeline #002 Website · Previous Phase Quotation · Prev Status DEACTIVATED
-Reactivation Notes [__________________________]
+Reactivate pipeline
+Resumes ABC Corporation · PL-00123 at its previous phase. History is preserved.
+Business ABC Corporation   ·   Pipeline PL-00123   ·   Resumes at Quotation
+Notes  [_______________________________________________]
 After: DEACTIVATED ─────▶ ACTIVE (Quotation)
-⚠ Resumes from its previous phase.                 [ Cancel ] [ Reactivate ]
+                                   [ Cancel ]   [ ↻ Reactivate ]
 ```
+Mobile: identical dialog; full-width stacked buttons (shadcn `DialogFooter` default). Trigger is the header button / row action.
 
-**WF-32 — New Pipeline from Existing Business**  &  **WF-33 — Pipeline History**
+### WF-30 & WF-33 — Business ▸ Pipelines tab (existing `business-pipelines-tab.tsx`, unchanged layout)
 ```text
-Create New Pipeline — ABC Corporation (business info reused)
-Name * [Mobile Application]  Type [Software Dev ▾]  Source [Referral ▾]  Assigned [Sarah ▾]
-Starts at: ① DISCOVERY [● ACTIVE]   Previous pipelines preserved.  [Cancel][Create Pipeline]
+[ Active ][ Deactivated ][ In progress ][ Pipeline value ]        (existing MetricCards)
+[ search…  | filters | New pipeline ]                            (existing ListFilterBar → WF-32)
+┌ ID ┬ Opportunity ┬ Phase ┬ Status ┬ Decision ┬ Value ┬ Owner ┬ Created ┬        ┐
+│PL-1│ Website     │ Quot. │■DEACT. │ Later    │ ₹4.5L │ John  │ 15 Aug  │[↻ React.]│  ← row action added
+│PL-2│ ERP         │ Proj. │●ACTIVE │ Accepted │ ₹9.0L │ Sarah │ 03 Mar  │[✓ Compl.]│
+└──────────────────────────────────────────────────────────────────────────────── ┘
+```
+Mobile: the existing `DataTable` keeps its current responsive behavior (unchanged); the Reactivate action sits in the same actions column as Complete.
 
-Pipeline History (WF-33):
-┌ PIPELINE ┬ OPPORTUNITY ┬ FINAL PHASE ┬ FINAL STATUS ┬ CREATED ┐
-│ #001     │ Website     │ Quotation   │ DEACTIVATED  │ Jan 2026│
-│ #002     │ ERP         │ Project     │ ACTIVE       │ Mar 2026│
+### Payments tab while deactivated (existing `payment-pending-panel.tsx`)
+```text
+Payment status                              [■ status badge]
+Contract total  Received  Initial remaining  Contract remaining
+(no action buttons — hidden while deactivated)
+» This pipeline is deactivated. Reactivate it to record payments.   ← muted hint added
 ```
 
-## 6. Technical Design / Architecture
+## 6. Technical Design / Architecture (reuse existing conventions)
 
-### Model additions
+### Model additions (`prisma/schema.prisma` → `Pipeline`)
 ```prisma
-// extend Pipeline (PHASE_5) with reactivation stamps
 model Pipeline {
   // …existing…
-  reactivatedAt   DateTime?
-  reactivatedById String?
-  previousPhase   PhaseType?   // set on deactivate so reactivate can restore it
+  deactivationReasonId String?
+  deactivatedAt        DateTime?
+  deactivatedById      String?
+  reactivatedAt        DateTime?   // NEW — last reactivation stamp
+  reactivatedById      String?     // NEW — denormalized member id (no FK), like deactivatedById
+  deactivationCount    Int      @default(0)  // NEW — review point #1
+  reactivationCount    Int      @default(0)  // NEW — review point #1
 }
 ```
-No new pipeline status is added — REACTIVATED is an event. On deactivate (PHASE_5) also store `previousPhase = currentPhase`.
+- **No `previousPhase` column.** `deactivatePipeline` only flips the current `PipelinePhase` row to `DEACTIVATED`; it never mutates `Pipeline.currentPhase`. So `currentPhase` already holds the stopped phase and reactivation resumes from it.
+- **No new `PipelineStatus` enum value.** REACTIVATED = `ActivityLog` event + stamps.
+- Migration `20260821000000_phase9_reactivation_counts`: `ADD COLUMN IF NOT EXISTS` ×4 (idempotent, matches repo convention) + backfill `UPDATE "pipeline" SET "deactivationCount" = 1 WHERE "deactivatedAt" IS NOT NULL`.
 
-### Reactivation service
+### Reactivation service (`src/features/pipelines/server/state-machine.ts`, mirrors `deactivatePipeline`)
 ```ts
-// src/features/pipelines/server/reactivation.ts
-export async function reactivatePipeline(pipelineId: string, notes?: string) {
-  await requirePermission("pipeline:write");
-  return db.$transaction(async (tx) => {
-    const p = await tx.pipeline.findUniqueOrThrow({ where: { id: pipelineId } });
-    if (p.status !== "DEACTIVATED") return p;               // idempotent guard
-    const resume = p.previousPhase ?? p.currentPhase;
-    await tx.pipelinePhase.update({ where: { pipelineId_type: { pipelineId, type: resume } }, data: { status: "ACTIVE" } });
-    const updated = await tx.pipeline.update({ where: { id: pipelineId },
-      data: { status: "ACTIVE", currentPhase: resume, reactivatedAt: new Date(), reactivatedById: me.id } });
-    await logActivity({ action: "pipeline.reactivated", pipelineId, metadata: { resume, notes } });
-    return updated;
+export async function reactivatePipeline(params: {
+  pipelineId: string; actorId: string; notes?: string;
+}): Promise<TransitionResult> {
+  const result = await db.$transaction(async (tx) => {
+    const pipeline = await tx.pipeline.findUnique({ where: { id: params.pipelineId } });
+    if (!pipeline) throw new Error("Pipeline not found.");
+    if (pipeline.status !== PipelineStatus.DEACTIVATED) {
+      throw new Error("Only a deactivated pipeline can be reactivated.");   // idempotent guard
+    }
+    const resume = pipeline.currentPhase;                                    // preserved through deactivation
+    await tx.pipelinePhase.updateMany({
+      where: { pipelineId: pipeline.id, type: resume, status: PhaseStatus.DEACTIVATED },
+      data: { status: PhaseStatus.ACTIVE },
+    });
+    await tx.pipeline.update({
+      where: { id: pipeline.id },
+      data: {
+        status: PipelineStatus.ACTIVE,
+        reactivatedAt: new Date(),
+        reactivatedById: params.actorId,
+        reactivationCount: { increment: 1 },
+      },
+    });
+    return { businessId: pipeline.businessId, from: resume, to: resume };
   });
+  await logActivity({ actorId: params.actorId, action: "pipeline.reactivated", entityType: "Pipeline",
+    entityId: params.pipelineId, businessId: result.businessId, pipelineId: params.pipelineId,
+    metadata: { phase: result.to, notes: params.notes ?? null } });
+  return result;
 }
 ```
+`deactivatePipeline` gains `deactivationCount: { increment: 1 }` in its existing `pipeline.update`. Deactivation stamps (`deactivatedAt/ById/reasonId`) are **left in place** on reactivation to preserve the last-deactivation record.
 
-### Decision routing (WF-30)
-`resolveReturnDecision(businessId, choice)` → Continue (open deactivated detail / reactivate) OR New (open create-pipeline WF-32). Guidance surfaced inline per CONTEXT rules (requirement change vs new opportunity vs quotation revision).
+### Wiring (existing files, existing patterns)
+| Layer | File | Change |
+|---|---|---|
+| zod | `schemas/pipeline.schema.ts` | `reactivatePipelineSchema = { pipelineId, notes }` (mirrors complete) |
+| action | `server/pipelines.actions.ts` | `reactivatePipelineAction` (`requirePermission("pipeline:write")` → parse → `reactivatePipeline` → `{ok}`) |
+| route | `app/api/pipelines/[id]/reactivate/route.ts` | thin `handleApi`+`fromService`+`readJson` (copy of deactivate route) |
+| query hook | `features/pipelines/api.ts` | `useReactivatePipeline` (POST `/reactivate`, `onSuccess: invalidatePipelineWrites`) |
+| DTO | `server/pipelines.queries.ts` | resolve `reactivatedByName` via `memberNameMap`; counts flow through `...rest` automatically |
+| dialog | `components/reactivation-dialog.tsx` | mirrors `deactivate-dialog.tsx` (notes-only, `parseForm`, `mutationErrorMessage`, toast) |
+| detail | `components/pipeline-detail.tsx` | header slot: `deactivated && canWrite` → Reactivate; Overview card: count cells |
+| business tab | `businesses/components/business-pipelines-tab.tsx` | Reactivate row action for `status === "DEACTIVATED"` |
 
-### Feature folder additions
-```text
-src/features/pipelines/
-├─ components/ deactivated-detail  returning-decision  reactivation-dialog  new-pipeline-from-business  pipeline-history
-├─ server/     reactivation.ts  decisions.ts
-└─ hooks/       use-pipeline-history.ts
-```
+### Payment-after-deactivation gate (review point #3)
+Already enforced today: `isPipelinePaymentEligible()` returns `false` unless `status === ACTIVE`, so `recordPaymentAction` rejects and `getPaymentStatusForPipeline` sets `canRecordPayment=false` / `awaitingInitial=false` (UI hides all payment actions). Phase 9 additions:
+- `recordPaymentAction`: explicit `status !== ACTIVE` check returning "Reactivate the pipeline before recording payment." (clearer than the generic phase message).
+- `payment-pending-panel.tsx`: muted hint when `deactivated`.
 
 ## 7. Definition of Done
 
-- Deactivated detail shows accurate deactivation info + preserved-history counts; both actions work.
-- Returning decision lists all pipelines and routes to Continue (reactivate) or New correctly; multi-pipeline case forces an explicit choice.
-- Reactivation flips DEACTIVATED→ACTIVE, restores the previous phase, preserves all history, logs the event, and is safe against double submits.
-- Create New starts at Discovery and leaves prior pipelines untouched.
-- Payment-after-deactivation path works end to end (reactivate → record payment → promote).
-- Pipeline History renders per business.
+- `Pipeline` has `reactivatedAt`, `reactivatedById`, `deactivationCount`, `reactivationCount`; migration applied; existing deactivated pipelines backfilled to `deactivationCount = 1`.
+- Deactivate increments `deactivationCount`; reactivate increments `reactivationCount`; both counts render in the Overview "Deactivated" card.
+- Reactivation flips `DEACTIVATED → ACTIVE`, restores the stopped phase, preserves all history + prior stamps, logs `pipeline.reactivated`, and is safe against double submits.
+- Reactivate is reachable from the pipeline-detail header slot and the business Pipelines tab row action — no new screens; mobile tabs unchanged (`SectionTabs` dropdown).
+- New pipeline for a returning business uses the existing create dialog (Discovery, prior pipelines untouched); business Pipelines tab is the history view.
+- Payment stays locked while deactivated (clear message + hint) and unlocks after reactivation; reactivate → record → auto-promote works end to end.
+- `next build` type-checks clean.
 
 ## 8. What NOT To Do
 
-- Do **not** restart a reactivated pipeline at Discovery — resume the previous phase (rule #9).
-- Do **not** create a new status value for REACTIVATED — it is an activity/event.
-- Do **not** force a new pipeline for requirement changes or quotation revisions (rules #11/#12).
-- Do **not** destroy or detach historical quotations/resources/tasks/activities on reactivation.
-- Do **not** auto-merge or auto-pick when multiple pipelines exist — require user choice.
+- Do **not** restart a reactivated pipeline at Discovery — resume `currentPhase`.
+- Do **not** add a `PipelineStatus.REACTIVATED` value or a `previousPhase` column.
+- Do **not** build new screens/components for returning-decision, history, or new-from-business — reuse the business Pipelines tab + existing create dialog.
+- Do **not** change existing UI/UX or the mobile tab dropdown behavior.
+- Do **not** clear or detach historical quotations / resources / tasks / follow-ups / activity / payments (or the prior deactivation stamps) on reactivation.
+- Do **not** allow recording payment on a deactivated pipeline.
 
 ## 9. Dependencies / Enables
 
-- **Depends on:** PHASE_8 (full phase machine incl. payment), PHASE_5 (engine + `previousPhase`).
-- **Enables:** complete pipeline lifecycle; accurate inputs for PHASE_11 analytics (won/lost/reactivated) and PHASE_12 stale-pipeline surfacing.
+- **Depends on:** PHASE_8 (full phase machine incl. payment gate), PHASE_5 (pipeline engine + phase rows).
+- **Enables:** complete pipeline lifecycle; accurate won/lost/reactivated + cycle-count inputs for PHASE_11 analytics and PHASE_12 stale-pipeline surfacing.

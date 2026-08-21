@@ -27,10 +27,32 @@ function clampStep(currentStep: number, total: number): number {
   return Math.min(Math.max(currentStep, 0), total - 1);
 }
 
-function stateFor(index: number, currentStep: number, deactivated: boolean): StepState {
+function stateFor(
+  index: number,
+  currentStep: number,
+  deactivated: boolean,
+  handedOff: boolean,
+  completed: boolean,
+): StepState {
+  if (completed) return "completed";
   if (index < currentStep) return "completed";
-  if (index === currentStep) return deactivated ? "deactivated" : "current";
+  if (index === currentStep) {
+    if (deactivated) return "deactivated";
+    if (handedOff) return "completed";
+    return "current";
+  }
   return "upcoming";
+}
+
+function stepperBadgeKind(
+  deactivated: boolean,
+  completed: boolean,
+  paymentPending: boolean,
+): "DEACTIVATED" | "COMPLETED" | "PENDING" | "ACTIVE" {
+  if (deactivated) return "DEACTIVATED";
+  if (completed) return "COMPLETED";
+  if (paymentPending) return "PENDING";
+  return "ACTIVE";
 }
 
 function progressValue(currentStep: number, total: number): number {
@@ -71,35 +93,47 @@ function PipelinePhaseCard({
   steps,
   currentStep,
   deactivated,
+  completed = false,
+  handedOff = false,
   paymentPending = false,
   phaseStartedAt = null,
+  reactivatedAt = null,
   className,
 }: {
   steps: string[];
   currentStep: number;
   deactivated: boolean;
+  completed?: boolean;
+  handedOff?: boolean;
   paymentPending?: boolean;
   phaseStartedAt?: Date | null;
+  /** Latest reactivation date; shown instead of started when set. */
+  reactivatedAt?: Date | null;
   className?: string;
 }) {
   if (steps.length === 0) return null;
 
   const currentLabel = steps[currentStep] ?? "";
-  const progress = progressValue(currentStep, steps.length);
+  const progress = completed ? 100 : progressValue(currentStep, steps.length);
+  const badgeKind = stepperBadgeKind(deactivated, completed, paymentPending);
 
   return (
     <Card className={className}>
       <CardContent className="flex flex-col gap-4">
         <div
           role="status"
-          aria-label={`Pipeline phase ${currentStep + 1} of ${steps.length}: ${currentLabel}${deactivated ? ", deactivated" : ""}`}
+          aria-label={`Pipeline phase ${currentStep + 1} of ${steps.length}: ${currentLabel}${deactivated ? ", deactivated" : completed ? ", completed" : ""}`}
           className="flex flex-col gap-3"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-xs text-muted-foreground">Current phase</p>
               <p className="text-xl font-semibold leading-snug break-words">{currentLabel}</p>
-              {phaseStartedAt ? (
+              {reactivatedAt ? (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Reactivated {format(reactivatedAt, "d MMM yyyy")}
+                </p>
+              ) : phaseStartedAt ? (
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   Started {format(phaseStartedAt, "d MMM yyyy")}
                 </p>
@@ -114,7 +148,7 @@ function PipelinePhaseCard({
               <span className="text-xs text-muted-foreground">
                 Phase {currentStep + 1} of {steps.length}
               </span>
-              <StatusBadge kind={deactivated ? "DEACTIVATED" : paymentPending ? "PENDING" : "ACTIVE"} />
+              <StatusBadge kind={badgeKind} />
             </div>
           </div>
 
@@ -125,7 +159,7 @@ function PipelinePhaseCard({
 
           <ol className="flex items-center justify-between gap-1 md:hidden" aria-label="Pipeline phases">
             {steps.map((label, index) => {
-              const state = stateFor(index, currentStep, deactivated);
+              const state = stateFor(index, currentStep, deactivated, handedOff, completed);
               return (
                 <li key={label} aria-label={`${label}: ${state}`}>
                   <StepIndicator state={state} index={index} size="sm" />
@@ -136,9 +170,9 @@ function PipelinePhaseCard({
 
           <ol className="hidden w-full items-center md:flex" aria-label="Pipeline phases">
             {steps.map((label, index) => {
-              const state = stateFor(index, currentStep, deactivated);
+              const state = stateFor(index, currentStep, deactivated, handedOff, completed);
               const isLast = index === steps.length - 1;
-              const isCurrent = index === currentStep;
+              const isCurrent = state === "current";
 
               return (
                 <li key={label} className="flex min-w-0 items-center">
@@ -159,7 +193,7 @@ function PipelinePhaseCard({
                     <span
                       className={cn(
                         "mx-2 h-px min-w-4 flex-1",
-                        index < currentStep ? "bg-primary" : "bg-border",
+                        index < currentStep || completed ? "bg-primary" : "bg-border",
                       )}
                       aria-hidden
                     />
@@ -178,8 +212,11 @@ export function PipelineStepper({
   steps = [...PIPELINE_PHASES],
   currentStep,
   deactivated = false,
+  completed = false,
+  handedOff = false,
   paymentPending = false,
   phaseStartedAt = null,
+  reactivatedAt = null,
   className,
 }: {
   steps?: string[];
@@ -187,9 +224,15 @@ export function PipelineStepper({
   currentStep: number;
   /** When true, the current phase is rendered as deactivated (stopped). */
   deactivated?: boolean;
+  /** When true, the pipeline is marked completed (won). */
+  completed?: boolean;
+  /** When true, the current (final) phase step is shown as completed. */
+  handedOff?: boolean;
   paymentPending?: boolean;
   /** When the current pipeline phase started. */
   phaseStartedAt?: Date | null;
+  /** Latest reactivation date; shown instead of started when set. */
+  reactivatedAt?: Date | null;
   className?: string;
 }) {
   const clamped = clampStep(currentStep, steps.length);
@@ -201,8 +244,11 @@ export function PipelineStepper({
       steps={steps}
       currentStep={clamped}
       deactivated={deactivated}
+      completed={completed}
+      handedOff={handedOff}
       paymentPending={paymentPending}
       phaseStartedAt={phaseStartedAt}
+      reactivatedAt={reactivatedAt}
       className={className}
     />
   );

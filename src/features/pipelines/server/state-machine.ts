@@ -153,6 +153,7 @@ export async function deactivatePipeline(params: {
         deactivationReasonId: reasonId,
         deactivatedAt: new Date(),
         deactivatedById: actorId,
+        deactivationCount: { increment: 1 },
       },
     });
 
@@ -172,6 +173,60 @@ export async function deactivatePipeline(params: {
     businessId: result.businessId,
     pipelineId,
     metadata: { reason: result.reasonLabel, phase: result.from, notes: notes ?? null },
+  });
+
+  return result;
+}
+
+/**
+ * Reactivate a deactivated pipeline. Resumes at the phase it was stopped at
+ * (`currentPhase` is never mutated on deactivate, so it already holds it) by
+ * flipping that phase row back to ACTIVE and the pipeline to ACTIVE. History and
+ * the prior deactivation stamps are preserved; `reactivationCount` is bumped. The
+ * status guard inside the transaction keeps a double-submit from double-counting.
+ */
+export async function reactivatePipeline(params: {
+  pipelineId: string;
+  actorId: string;
+  notes?: string;
+}): Promise<TransitionResult> {
+  const { pipelineId, actorId, notes } = params;
+
+  const result = await db.$transaction(async (tx) => {
+    const pipeline = await tx.pipeline.findUnique({ where: { id: pipelineId } });
+    if (!pipeline) throw new Error("Pipeline not found.");
+    if (pipeline.status !== PipelineStatus.DEACTIVATED) {
+      throw new Error("Only a deactivated pipeline can be reactivated.");
+    }
+
+    const resume = pipeline.currentPhase;
+
+    await tx.pipelinePhase.updateMany({
+      where: { pipelineId, type: resume, status: PhaseStatus.DEACTIVATED },
+      data: { status: PhaseStatus.ACTIVE },
+    });
+
+    await tx.pipeline.update({
+      where: { id: pipelineId },
+      data: {
+        status: PipelineStatus.ACTIVE,
+        reactivatedAt: new Date(),
+        reactivatedById: actorId,
+        reactivationCount: { increment: 1 },
+      },
+    });
+
+    return { businessId: pipeline.businessId, from: resume, to: resume };
+  });
+
+  await logActivity({
+    actorId,
+    action: "pipeline.reactivated",
+    entityType: "Pipeline",
+    entityId: pipelineId,
+    businessId: result.businessId,
+    pipelineId,
+    metadata: { phase: result.to, notes: notes ?? null },
   });
 
   return result;

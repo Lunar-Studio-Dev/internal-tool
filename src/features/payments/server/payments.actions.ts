@@ -10,6 +10,7 @@ import {
   ClientDecision,
   PaymentMethod,
   PhaseType,
+  PipelineStatus,
   QuotationVersionStatus,
   TransactionType,
 } from "@/generated/prisma/enums";
@@ -41,6 +42,9 @@ export async function recordPaymentAction(input: unknown): Promise<RecordPayment
       include: { decision: true },
     });
     if (!pipeline) return { ok: false, error: "Pipeline not found." };
+    if (pipeline.status === PipelineStatus.DEACTIVATED) {
+      return { ok: false, error: "Reactivate the pipeline before recording payment." };
+    }
     if (!isPipelinePaymentEligible(pipeline)) {
       return {
         ok: false,

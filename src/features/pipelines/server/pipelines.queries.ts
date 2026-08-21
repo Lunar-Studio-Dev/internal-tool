@@ -30,7 +30,11 @@ export async function getPipelineById(id: string) {
   });
   if (!pipeline) return null;
 
-  const names = await memberNameMap([pipeline.ownerId, pipeline.deactivatedById]);
+  const names = await memberNameMap([
+    pipeline.ownerId,
+    pipeline.deactivatedById,
+    pipeline.reactivatedById,
+  ]);
   let reasonLabel: string | null = null;
   if (pipeline.deactivationReasonId) {
     const reason = await db.deactivationReason.findUnique({
@@ -48,6 +52,9 @@ export async function getPipelineById(id: string) {
     ownerName: pipeline.ownerId ? (names.get(pipeline.ownerId) ?? null) : null,
     deactivatedByName: pipeline.deactivatedById
       ? (names.get(pipeline.deactivatedById) ?? null)
+      : null,
+    reactivatedByName: pipeline.reactivatedById
+      ? (names.get(pipeline.reactivatedById) ?? null)
       : null,
     reasonLabel,
   };

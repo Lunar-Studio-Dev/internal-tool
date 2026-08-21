@@ -1961,6 +1961,10 @@ export const PipelineScalarFieldEnum = {
   deactivationReasonId: 'deactivationReasonId',
   deactivatedAt: 'deactivatedAt',
   deactivatedById: 'deactivatedById',
+  reactivatedAt: 'reactivatedAt',
+  reactivatedById: 'reactivatedById',
+  deactivationCount: 'deactivationCount',
+  reactivationCount: 'reactivationCount',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -2145,6 +2149,7 @@ export const TransactionScalarFieldEnum = {
   amount: 'amount',
   date: 'date',
   category: 'category',
+  expenseCategory: 'expenseCategory',
   description: 'description',
   businessId: 'businessId',
   pipelineId: 'pipelineId',
@@ -2383,20 +2388,6 @@ export type ListEnumPipelineStatusFieldRefInput<$PrismaModel> = FieldRefInputTyp
 
 
 /**
- * Reference to a field of type 'PhaseStatus'
- */
-export type EnumPhaseStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PhaseStatus'>
-    
-
-
-/**
- * Reference to a field of type 'PhaseStatus[]'
- */
-export type ListEnumPhaseStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PhaseStatus[]'>
-    
-
-
-/**
  * Reference to a field of type 'Int'
  */
 export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
@@ -2407,6 +2398,20 @@ export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'In
  * Reference to a field of type 'Int[]'
  */
 export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+/**
+ * Reference to a field of type 'PhaseStatus'
+ */
+export type EnumPhaseStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PhaseStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'PhaseStatus[]'
+ */
+export type ListEnumPhaseStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PhaseStatus[]'>
     
 
 
@@ -2491,6 +2496,20 @@ export type EnumTransactionTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$
  * Reference to a field of type 'TransactionType[]'
  */
 export type ListEnumTransactionTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TransactionType[]'>
+    
+
+
+/**
+ * Reference to a field of type 'ExpenseCategory'
+ */
+export type EnumExpenseCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ExpenseCategory'>
+    
+
+
+/**
+ * Reference to a field of type 'ExpenseCategory[]'
+ */
+export type ListEnumExpenseCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ExpenseCategory[]'>
     
 
 

@@ -40,3 +40,7 @@ export function invalidateFollowUps(queryClient: QueryClient) {
     queryClient.invalidateQueries({ queryKey: queryKeys.team.all }),
   ]);
 }
+
+export function invalidateAccounts(queryClient: QueryClient) {
+  return queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all });
+}

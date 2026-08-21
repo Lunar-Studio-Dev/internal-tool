@@ -49,4 +49,15 @@ export const queryKeys = {
   followUps: {
     all: ["follow-ups"] as const,
   },
+  accounts: {
+    all: ["accounts"] as const,
+    summary: () => [...queryKeys.accounts.all, "summary"] as const,
+    transactions: (filters?: Record<string, string | undefined>) =>
+      [...queryKeys.accounts.all, "transactions", filters ?? {}] as const,
+    outstanding: () => [...queryKeys.accounts.all, "outstanding"] as const,
+    revenueByMonth: () => [...queryKeys.accounts.all, "revenue-by-month"] as const,
+    earningsVsExpenses: () => [...queryKeys.accounts.all, "earnings-vs-expenses"] as const,
+    options: () => [...queryKeys.accounts.all, "options"] as const,
+    detail: (id: string) => [...queryKeys.accounts.all, "detail", id] as const,
+  },
 } as const;

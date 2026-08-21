@@ -182,6 +182,10 @@ model Pipeline {
   deactivationReasonId String?
   deactivatedAt        DateTime?
   deactivatedById      String?
+  reactivatedAt        DateTime?
+  reactivatedById      String?
+  deactivationCount    Int             @default(0)
+  reactivationCount    Int             @default(0)
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
 
@@ -435,6 +439,14 @@ enum TransactionType {
   EXPENSE
 }
 
+enum ExpenseCategory {
+  SOFTWARE
+  MARKETING
+  OPERATIONS
+  SALARY
+  OTHER
+}
+
 enum PaymentMethod {
   BANK_TRANSFER
   UPI
@@ -455,9 +467,10 @@ model Transaction {
   type        TransactionType
   amount      Int // paise
   date        DateTime
-  category    String?
-  description String?
-  businessId  String?
+  category        String?
+  expenseCategory ExpenseCategory?
+  description     String?
+  businessId      String?
   business    Business?       @relation(fields: [businessId], references: [id])
   pipelineId  String?
   pipeline    Pipeline?       @relation(fields: [pipelineId], references: [id])

@@ -1,8 +1,26 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { AlertCircleIcon } from "lucide-react";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
+
+export function FormErrorAlert({
+  title = "Could not save",
+  message,
+}: {
+  title?: string;
+  message: string;
+}) {
+  return (
+    <Alert variant="destructive">
+      <AlertCircleIcon />
+      <AlertTitle>{title}</AlertTitle>
+      <AlertDescription>{message}</AlertDescription>
+    </Alert>
+  );
+}
 
 export function FieldLabel({
   htmlFor,

@@ -10,6 +10,7 @@ import {
   IndianRupeeIcon,
   PauseCircleIcon,
   PlusIcon,
+  RotateCcwIcon,
   WorkflowIcon,
 } from "lucide-react";
 
@@ -45,6 +46,7 @@ import { CLIENT_DECISION_LABELS } from "@/features/phases/quotation-metrics";
 import { formatINR } from "@/features/phases/constants";
 import { CompletePipelineDialog } from "@/features/pipelines/components/complete-pipeline-dialog";
 import { PipelineCreateDialog } from "@/features/pipelines/components/pipeline-create-dialog";
+import { ReactivationDialog } from "@/features/pipelines/components/reactivation-dialog";
 import {
   canCompletePipeline,
   PHASE_LABELS,
@@ -197,14 +199,26 @@ export function BusinessPipelinesTab({
             {
               id: "actions",
               header: "",
-              headerClassName: "w-32",
-              className: "w-32 text-right",
+              headerClassName: "w-36",
+              className: "w-36 text-right",
               cell: (p: BusinessPipelineRow) =>
-                canCompletePipeline({
-                  status: p.status,
-                  currentPhase: p.currentPhase,
-                  handedOff: p.handedOff,
-                }) ? (
+                p.status === "DEACTIVATED" ? (
+                  <ReactivationDialog
+                    pipelineId={p.id}
+                    pipelineCode={p.code}
+                    resumePhaseLabel={PHASE_LABELS[p.currentPhase]}
+                    trigger={
+                      <Button variant="outline" size="sm">
+                        <RotateCcwIcon className="size-4" />
+                        Reactivate
+                      </Button>
+                    }
+                  />
+                ) : canCompletePipeline({
+                    status: p.status,
+                    currentPhase: p.currentPhase,
+                    handedOff: p.handedOff,
+                  }) ? (
                   <CompletePipelineDialog
                     pipelineId={p.id}
                     pipelineLabel={`${p.code} · ${p.name}`}
