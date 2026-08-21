@@ -1,20 +1,39 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 
-import { GroupedBarChart } from "@/components/common/chart/simple-bar-chart";
+import { incomeExpenseChartConfig } from "@/components/common/chart/chart-theme";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import { accountQueries } from "@/features/accounts/api";
 import { formatINR } from "@/features/phases/constants";
 
 export function EarningsVsExpensesChart() {
   const query = useQuery(accountQueries.earningsVsExpenses());
 
+  const chartData = useMemo(
+    () =>
+      (query.data ?? []).map((row) => ({
+        label: row.label,
+        earning: row.earningPaise,
+        expense: row.expensePaise,
+      })),
+    [query.data],
+  );
+
   if (query.isPending) {
     return <ChartSkeleton title="Earnings vs expenses" />;
   }
 
-  if (query.isError || !query.data?.length) {
+  if (query.isError || chartData.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -27,32 +46,44 @@ export function EarningsVsExpensesChart() {
     );
   }
 
-  const labels = query.data.map((row) => row.label);
-
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Earnings vs expenses</CardTitle>
       </CardHeader>
       <CardContent>
-        <GroupedBarChart
-          labels={labels}
-          series={[
-            {
-              key: "earning",
-              label: "Income",
-              values: query.data.map((row) => row.earningPaise),
-              className: "bg-emerald-500 dark:bg-emerald-400",
-            },
-            {
-              key: "expense",
-              label: "Expense",
-              values: query.data.map((row) => row.expensePaise),
-              className: "bg-rose-500 dark:bg-rose-400",
-            },
-          ]}
-          valueFormatter={formatINR}
-        />
+        <ChartContainer
+          config={incomeExpenseChartConfig}
+          className="aspect-auto h-[11rem] w-full"
+        >
+          <BarChart accessibilityLayer data={chartData} margin={{ left: 0, right: 0 }}>
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+            />
+            <ChartTooltip
+              content={
+                <ChartTooltipContent
+                  formatter={(value) => formatINR(Number(value))}
+                />
+              }
+            />
+            <ChartLegend content={<ChartLegendContent />} />
+            <Bar
+              dataKey="earning"
+              fill="var(--color-earning)"
+              radius={[4, 4, 0, 0]}
+            />
+            <Bar
+              dataKey="expense"
+              fill="var(--color-expense)"
+              radius={[4, 4, 0, 0]}
+            />
+          </BarChart>
+        </ChartContainer>
       </CardContent>
     </Card>
   );
@@ -65,7 +96,7 @@ function ChartSkeleton({ title }: { title: string }) {
         <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-44 animate-pulse rounded-md bg-muted" />
+        <div className="h-[11rem] animate-pulse rounded-md bg-muted" />
       </CardContent>
     </Card>
   );
