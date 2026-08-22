@@ -69,7 +69,9 @@ export const ModelName = {
   PipelineDecision: 'PipelineDecision',
   Transaction: 'Transaction',
   Payment: 'Payment',
-  Project: 'Project'
+  Project: 'Project',
+  Notification: 'Notification',
+  AppSettings: 'AppSettings'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -406,6 +408,34 @@ export const ProjectScalarFieldEnum = {
 } as const
 
 export type ProjectScalarFieldEnum = (typeof ProjectScalarFieldEnum)[keyof typeof ProjectScalarFieldEnum]
+
+
+export const NotificationScalarFieldEnum = {
+  id: 'id',
+  recipientId: 'recipientId',
+  type: 'type',
+  title: 'title',
+  body: 'body',
+  entityType: 'entityType',
+  entityId: 'entityId',
+  readAt: 'readAt',
+  createdAt: 'createdAt'
+} as const
+
+export type NotificationScalarFieldEnum = (typeof NotificationScalarFieldEnum)[keyof typeof NotificationScalarFieldEnum]
+
+
+export const AppSettingsScalarFieldEnum = {
+  id: 'id',
+  companyName: 'companyName',
+  currency: 'currency',
+  dateFormat: 'dateFormat',
+  timezone: 'timezone',
+  staleDays: 'staleDays',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AppSettingsScalarFieldEnum = (typeof AppSettingsScalarFieldEnum)[keyof typeof AppSettingsScalarFieldEnum]
 
 
 export const SortOrder = {

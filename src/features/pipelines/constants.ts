@@ -56,6 +56,12 @@ export const PIPELINE_STATUS_OPTIONS: PipelineStatus[] = [
   PipelineStatus.COMPLETED,
 ];
 
+export const PIPELINE_STATUS_LABELS: Record<PipelineStatus, string> = {
+  ACTIVE: "Active",
+  DEACTIVATED: "Deactivated",
+  COMPLETED: "Completed",
+};
+
 /** The phase immediately after `type` in the fixed order, or null at the end. */
 export function nextPhase(type: PhaseType): PhaseType | null {
   const index = PHASE_ORDER.indexOf(type);

@@ -18,3 +18,10 @@ export const revenueChartConfig = {
     color: "var(--primary)",
   },
 } satisfies ChartConfig;
+
+export const pipelineChartConfig = {
+  count: {
+    label: "Pipelines",
+    color: "var(--chart-2)",
+  },
+} satisfies ChartConfig;

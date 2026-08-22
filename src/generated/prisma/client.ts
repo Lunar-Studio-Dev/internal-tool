@@ -151,3 +151,13 @@ export type Payment = Prisma.PaymentModel
  * Delivery project created after the payment gate opens Project Management.
  */
 export type Project = Prisma.ProjectModel
+/**
+ * Model Notification
+ * In-app notification for a team member. Created by server actions on key events.
+ */
+export type Notification = Prisma.NotificationModel
+/**
+ * Model AppSettings
+ * Singleton app configuration (General settings tab).
+ */
+export type AppSettings = Prisma.AppSettingsModel

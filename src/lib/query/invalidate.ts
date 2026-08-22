@@ -44,3 +44,15 @@ export function invalidateFollowUps(queryClient: QueryClient) {
 export function invalidateAccounts(queryClient: QueryClient) {
   return queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all });
 }
+
+export function invalidateDashboard(queryClient: QueryClient) {
+  return queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
+}
+
+export function invalidateNotifications(queryClient: QueryClient) {
+  return queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+}
+
+export function invalidateSettings(queryClient: QueryClient) {
+  return queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
+}

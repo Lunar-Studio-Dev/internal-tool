@@ -60,4 +60,30 @@ export const queryKeys = {
     options: () => [...queryKeys.accounts.all, "options"] as const,
     detail: (id: string) => [...queryKeys.accounts.all, "detail", id] as const,
   },
+  dashboard: {
+    all: ["dashboard"] as const,
+    data: () => [...queryKeys.dashboard.all, "data"] as const,
+  },
+  analytics: {
+    all: ["analytics"] as const,
+    tab: (tab: string, period?: string) =>
+      [...queryKeys.analytics.all, tab, period ?? "monthly"] as const,
+  },
+  activity: {
+    all: ["activity"] as const,
+    timeline: (filters?: Record<string, string | undefined>) =>
+      [...queryKeys.activity.all, "timeline", filters ?? {}] as const,
+  },
+  search: {
+    all: ["search"] as const,
+    query: (q: string) => [...queryKeys.search.all, q] as const,
+  },
+  notifications: {
+    all: ["notifications"] as const,
+    list: () => [...queryKeys.notifications.all, "list"] as const,
+  },
+  settings: {
+    all: ["settings"] as const,
+    data: () => [...queryKeys.settings.all, "data"] as const,
+  },
 } as const;

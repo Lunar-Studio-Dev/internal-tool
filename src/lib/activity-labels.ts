@@ -30,6 +30,7 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   "quotation.accepted": "recorded quotation acceptance",
   "quotation.rejected": "recorded quotation rejection",
   "quotation.deferred": "deferred the quotation decision",
+  "payment.recorded": "recorded a payment",
 };
 
 export function activityLabel(action: string): string {

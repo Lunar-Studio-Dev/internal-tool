@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import {
+  BellIcon,
   ChevronsUpDownIcon,
   KeyRoundIcon,
+  ListTodoIcon,
   LogOutIcon,
   SettingsIcon,
   UserIcon,
@@ -28,7 +31,7 @@ import {
 } from "@/components/ui/sidebar";
 import { signOutAction } from "@/features/auth/actions";
 import { ROLE_LABELS } from "@/features/team/constants";
-import { useCurrentMember } from "@/features/team/hooks/use-current-member";
+import { useCan, useCurrentMember } from "@/features/team/hooks/use-current-member";
 
 function initialsOf(name: string) {
   const parts = name.trim().split(/\s+/).slice(0, 2);
@@ -40,6 +43,7 @@ export function UserMenu() {
   const [isPending, startTransition] = useTransition();
   const [pwOpen, setPwOpen] = useState(false);
   const member = useCurrentMember();
+  const canSettings = useCan("settings:manage");
 
   const name = member.name || "User";
   const email = member.email;
@@ -79,14 +83,32 @@ export function UserMenu() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem disabled>
-                <UserIcon className="size-4" />
-                Profile
+              <DropdownMenuItem asChild>
+                <Link href="/profile">
+                  <UserIcon className="size-4" />
+                  Profile
+                </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem disabled>
-                <SettingsIcon className="size-4" />
-                Settings
+              <DropdownMenuItem asChild>
+                <Link href="/todos">
+                  <ListTodoIcon className="size-4" />
+                  My tasks
+                </Link>
               </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/activity">
+                  <BellIcon className="size-4" />
+                  Activity
+                </Link>
+              </DropdownMenuItem>
+              {canSettings ? (
+                <DropdownMenuItem asChild>
+                  <Link href="/settings">
+                    <SettingsIcon className="size-4" />
+                    Settings
+                  </Link>
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuItem
                 onSelect={(event) => {
                   event.preventDefault();

@@ -531,3 +531,44 @@ model Project {
   @@index([status])
   @@map("project")
 }
+
+// ─── PHASE_12 — Notifications, App Settings ───
+
+enum NotificationType {
+  PAYMENT
+  MEETING
+  TASK_OVERDUE
+  QUOTATION
+  PIPELINE
+  FOLLOWUP
+  SYSTEM
+}
+
+/// In-app notification for a team member. Created by server actions on key events.
+model Notification {
+  id          String           @id @default(cuid())
+  recipientId String
+  type        NotificationType
+  title       String
+  body        String?
+  entityType  String?
+  entityId    String?
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+
+  @@index([recipientId, readAt, createdAt])
+  @@map("notification")
+}
+
+/// Singleton app configuration (General settings tab).
+model AppSettings {
+  id          String   @id @default("singleton")
+  companyName String   @default("Lunar Studio")
+  currency    String   @default("INR")
+  dateFormat  String   @default("DD MMM YYYY")
+  timezone    String   @default("Asia/Kolkata")
+  staleDays   Int      @default(14)
+  updatedAt   DateTime @updatedAt
+
+  @@map("app_settings")
+}

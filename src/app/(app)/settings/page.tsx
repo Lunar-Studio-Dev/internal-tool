@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import { SettingsIcon } from "lucide-react";
 
-import { ComingSoon } from "@/components/common/coming-soon";
 import { NotAuthorized } from "@/components/layout/not-authorized";
 import { PageHeader } from "@/components/common/page-header";
+import { SettingsView } from "@/features/settings/components/settings-view";
 import { currentMemberCan } from "@/lib/auth/member";
 
 export const dynamic = "force-dynamic";
@@ -23,20 +22,10 @@ export default async function SettingsPage() {
     <>
       <PageHeader
         title="Settings"
-        description="Workspace preferences and integrations."
+        description="Workspace preferences and configuration."
         breadcrumbs={[{ label: "Settings" }]}
       />
-      <ComingSoon
-        icon={SettingsIcon}
-        title="Settings are on the way"
-        description="Configure your workspace, preferences, and integrations from one place."
-        features={[
-          "Workspace profile and branding",
-          "Notification preferences",
-          "Third-party integrations",
-          "Data export and housekeeping",
-        ]}
-      />
+      <SettingsView />
     </>
   );
 }

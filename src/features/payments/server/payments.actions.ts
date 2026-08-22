@@ -15,6 +15,7 @@ import {
   TransactionType,
 } from "@/generated/prisma/enums";
 import { logActivity } from "@/lib/activity";
+import { createNotification, notifyAdmins } from "@/lib/notifications";
 import { requirePermission } from "@/lib/auth/member";
 import { db } from "@/lib/db";
 import { emptyToNull } from "@/lib/utils";
@@ -160,6 +161,25 @@ export async function recordPaymentAction(input: unknown): Promise<RecordPayment
           to: "PROJECT_MANAGEMENT",
           via: "payment",
         },
+      });
+    }
+
+    await notifyAdmins({
+      type: "PAYMENT",
+      title: `Payment recorded on ${pipeline.code}`,
+      body: `₹${(d.amountPaise / 100).toLocaleString("en-IN")} received`,
+      entityType: "Pipeline",
+      entityId: pipeline.id,
+    });
+
+    if (pipeline.ownerId && pipeline.ownerId !== member.id) {
+      await createNotification({
+        recipientId: pipeline.ownerId,
+        type: "PAYMENT",
+        title: `Payment recorded on ${pipeline.code}`,
+        body: `₹${(d.amountPaise / 100).toLocaleString("en-IN")} received`,
+        entityType: "Pipeline",
+        entityId: pipeline.id,
       });
     }
 

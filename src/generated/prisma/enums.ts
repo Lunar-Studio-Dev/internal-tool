@@ -175,3 +175,16 @@ export const ProjectStatus = {
 } as const
 
 export type ProjectStatus = (typeof ProjectStatus)[keyof typeof ProjectStatus]
+
+
+export const NotificationType = {
+  PAYMENT: 'PAYMENT',
+  MEETING: 'MEETING',
+  TASK_OVERDUE: 'TASK_OVERDUE',
+  QUOTATION: 'QUOTATION',
+  PIPELINE: 'PIPELINE',
+  FOLLOWUP: 'FOLLOWUP',
+  SYSTEM: 'SYSTEM'
+} as const
+
+export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType]
