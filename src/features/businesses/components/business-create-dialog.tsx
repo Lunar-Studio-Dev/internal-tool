@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { BusinessForm } from "@/features/businesses/components/business-form";
+import { BusinessCreateWizard } from "@/features/businesses/components/business-create-wizard";
 
 export function BusinessCreateDialog({ trigger }: { trigger: ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -22,10 +22,10 @@ export function BusinessCreateDialog({ trigger }: { trigger: ReactNode }) {
         <DialogHeader>
           <DialogTitle>New business</DialogTitle>
           <DialogDescription>
-            Create a permanent client record. We&apos;ll check for possible duplicates on save.
+            Add a client in three steps. We&apos;ll check for possible duplicates on save.
           </DialogDescription>
         </DialogHeader>
-        <BusinessForm mode="create" onCancel={() => setOpen(false)} />
+        <BusinessCreateWizard onCancel={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
   );

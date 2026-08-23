@@ -74,6 +74,12 @@ export async function setClientDecisionAction(input: unknown): Promise<ActionRes
       const dueAt = new Date(d.followUpDueAt);
       if (Number.isNaN(dueAt.getTime())) return { ok: false, error: "Pick a valid follow-up date." };
 
+      const primaryAssignee = await db.pipelineAssignee.findFirst({
+        where: { pipelineId: d.pipelineId },
+        orderBy: { assignedAt: "asc" },
+        select: { memberId: true },
+      });
+
       await db.$transaction(async (tx) => {
         await tx.pipelineDecision.upsert({
           where: { pipelineId: d.pipelineId },
@@ -96,7 +102,7 @@ export async function setClientDecisionAction(input: unknown): Promise<ActionRes
             phaseType: PhaseType.QUOTATION,
             reason: d.followUpReason?.trim() || "Client asked to revisit later",
             dueAt,
-            assigneeId: pipeline.ownerId,
+            assigneeId: primaryAssignee?.memberId ?? null,
             notes: emptyToNull(d.notes),
             createdById: member.id,
           },

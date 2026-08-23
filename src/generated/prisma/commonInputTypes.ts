@@ -178,26 +178,9 @@ export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
   _max?: Prisma.NestedJsonNullableFilter<$PrismaModel>
 }
 
-export type EnumContactRoleFilter<$PrismaModel = never> = {
-  equals?: $Enums.ContactRole | Prisma.EnumContactRoleFieldRefInput<$PrismaModel>
-  in?: $Enums.ContactRole[] | Prisma.ListEnumContactRoleFieldRefInput<$PrismaModel>
-  notIn?: $Enums.ContactRole[] | Prisma.ListEnumContactRoleFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumContactRoleFilter<$PrismaModel> | $Enums.ContactRole
-}
-
 export type BoolFilter<$PrismaModel = never> = {
   equals?: boolean | Prisma.BooleanFieldRefInput<$PrismaModel>
   not?: Prisma.NestedBoolFilter<$PrismaModel> | boolean
-}
-
-export type EnumContactRoleWithAggregatesFilter<$PrismaModel = never> = {
-  equals?: $Enums.ContactRole | Prisma.EnumContactRoleFieldRefInput<$PrismaModel>
-  in?: $Enums.ContactRole[] | Prisma.ListEnumContactRoleFieldRefInput<$PrismaModel>
-  notIn?: $Enums.ContactRole[] | Prisma.ListEnumContactRoleFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumContactRoleWithAggregatesFilter<$PrismaModel> | $Enums.ContactRole
-  _count?: Prisma.NestedIntFilter<$PrismaModel>
-  _min?: Prisma.NestedEnumContactRoleFilter<$PrismaModel>
-  _max?: Prisma.NestedEnumContactRoleFilter<$PrismaModel>
 }
 
 export type BoolWithAggregatesFilter<$PrismaModel = never> = {
@@ -208,11 +191,21 @@ export type BoolWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedBoolFilter<$PrismaModel>
 }
 
-export type EnumLeadSourceFilter<$PrismaModel = never> = {
-  equals?: $Enums.LeadSource | Prisma.EnumLeadSourceFieldRefInput<$PrismaModel>
-  in?: $Enums.LeadSource[] | Prisma.ListEnumLeadSourceFieldRefInput<$PrismaModel>
-  notIn?: $Enums.LeadSource[] | Prisma.ListEnumLeadSourceFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumLeadSourceFilter<$PrismaModel> | $Enums.LeadSource
+export type EnumContactRoleFilter<$PrismaModel = never> = {
+  equals?: $Enums.ContactRole | Prisma.EnumContactRoleFieldRefInput<$PrismaModel>
+  in?: $Enums.ContactRole[] | Prisma.ListEnumContactRoleFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ContactRole[] | Prisma.ListEnumContactRoleFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumContactRoleFilter<$PrismaModel> | $Enums.ContactRole
+}
+
+export type EnumContactRoleWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ContactRole | Prisma.EnumContactRoleFieldRefInput<$PrismaModel>
+  in?: $Enums.ContactRole[] | Prisma.ListEnumContactRoleFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ContactRole[] | Prisma.ListEnumContactRoleFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumContactRoleWithAggregatesFilter<$PrismaModel> | $Enums.ContactRole
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumContactRoleFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumContactRoleFilter<$PrismaModel>
 }
 
 export type EnumPhaseTypeFilter<$PrismaModel = never> = {
@@ -249,16 +242,6 @@ export type IntFilter<$PrismaModel = never> = {
   gt?: number | Prisma.IntFieldRefInput<$PrismaModel>
   gte?: number | Prisma.IntFieldRefInput<$PrismaModel>
   not?: Prisma.NestedIntFilter<$PrismaModel> | number
-}
-
-export type EnumLeadSourceWithAggregatesFilter<$PrismaModel = never> = {
-  equals?: $Enums.LeadSource | Prisma.EnumLeadSourceFieldRefInput<$PrismaModel>
-  in?: $Enums.LeadSource[] | Prisma.ListEnumLeadSourceFieldRefInput<$PrismaModel>
-  notIn?: $Enums.LeadSource[] | Prisma.ListEnumLeadSourceFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumLeadSourceWithAggregatesFilter<$PrismaModel> | $Enums.LeadSource
-  _count?: Prisma.NestedIntFilter<$PrismaModel>
-  _min?: Prisma.NestedEnumLeadSourceFilter<$PrismaModel>
-  _max?: Prisma.NestedEnumLeadSourceFilter<$PrismaModel>
 }
 
 export type EnumPhaseTypeWithAggregatesFilter<$PrismaModel = never> = {
@@ -743,26 +726,9 @@ export type NestedJsonNullableFilterBase<$PrismaModel = never> = {
   not?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel> | Prisma.JsonNullValueFilter
 }
 
-export type NestedEnumContactRoleFilter<$PrismaModel = never> = {
-  equals?: $Enums.ContactRole | Prisma.EnumContactRoleFieldRefInput<$PrismaModel>
-  in?: $Enums.ContactRole[] | Prisma.ListEnumContactRoleFieldRefInput<$PrismaModel>
-  notIn?: $Enums.ContactRole[] | Prisma.ListEnumContactRoleFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumContactRoleFilter<$PrismaModel> | $Enums.ContactRole
-}
-
 export type NestedBoolFilter<$PrismaModel = never> = {
   equals?: boolean | Prisma.BooleanFieldRefInput<$PrismaModel>
   not?: Prisma.NestedBoolFilter<$PrismaModel> | boolean
-}
-
-export type NestedEnumContactRoleWithAggregatesFilter<$PrismaModel = never> = {
-  equals?: $Enums.ContactRole | Prisma.EnumContactRoleFieldRefInput<$PrismaModel>
-  in?: $Enums.ContactRole[] | Prisma.ListEnumContactRoleFieldRefInput<$PrismaModel>
-  notIn?: $Enums.ContactRole[] | Prisma.ListEnumContactRoleFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumContactRoleWithAggregatesFilter<$PrismaModel> | $Enums.ContactRole
-  _count?: Prisma.NestedIntFilter<$PrismaModel>
-  _min?: Prisma.NestedEnumContactRoleFilter<$PrismaModel>
-  _max?: Prisma.NestedEnumContactRoleFilter<$PrismaModel>
 }
 
 export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
@@ -773,11 +739,21 @@ export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedBoolFilter<$PrismaModel>
 }
 
-export type NestedEnumLeadSourceFilter<$PrismaModel = never> = {
-  equals?: $Enums.LeadSource | Prisma.EnumLeadSourceFieldRefInput<$PrismaModel>
-  in?: $Enums.LeadSource[] | Prisma.ListEnumLeadSourceFieldRefInput<$PrismaModel>
-  notIn?: $Enums.LeadSource[] | Prisma.ListEnumLeadSourceFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumLeadSourceFilter<$PrismaModel> | $Enums.LeadSource
+export type NestedEnumContactRoleFilter<$PrismaModel = never> = {
+  equals?: $Enums.ContactRole | Prisma.EnumContactRoleFieldRefInput<$PrismaModel>
+  in?: $Enums.ContactRole[] | Prisma.ListEnumContactRoleFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ContactRole[] | Prisma.ListEnumContactRoleFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumContactRoleFilter<$PrismaModel> | $Enums.ContactRole
+}
+
+export type NestedEnumContactRoleWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ContactRole | Prisma.EnumContactRoleFieldRefInput<$PrismaModel>
+  in?: $Enums.ContactRole[] | Prisma.ListEnumContactRoleFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ContactRole[] | Prisma.ListEnumContactRoleFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumContactRoleWithAggregatesFilter<$PrismaModel> | $Enums.ContactRole
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumContactRoleFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumContactRoleFilter<$PrismaModel>
 }
 
 export type NestedEnumPhaseTypeFilter<$PrismaModel = never> = {
@@ -803,16 +779,6 @@ export type NestedDateTimeNullableFilter<$PrismaModel = never> = {
   gt?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
   gte?: Date | string | Prisma.DateTimeFieldRefInput<$PrismaModel>
   not?: Prisma.NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
-}
-
-export type NestedEnumLeadSourceWithAggregatesFilter<$PrismaModel = never> = {
-  equals?: $Enums.LeadSource | Prisma.EnumLeadSourceFieldRefInput<$PrismaModel>
-  in?: $Enums.LeadSource[] | Prisma.ListEnumLeadSourceFieldRefInput<$PrismaModel>
-  notIn?: $Enums.LeadSource[] | Prisma.ListEnumLeadSourceFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumLeadSourceWithAggregatesFilter<$PrismaModel> | $Enums.LeadSource
-  _count?: Prisma.NestedIntFilter<$PrismaModel>
-  _min?: Prisma.NestedEnumLeadSourceFilter<$PrismaModel>
-  _max?: Prisma.NestedEnumLeadSourceFilter<$PrismaModel>
 }
 
 export type NestedEnumPhaseTypeWithAggregatesFilter<$PrismaModel = never> = {

@@ -111,7 +111,18 @@ export async function getRecentPipelines(limit = 5) {
     orderBy: { updatedAt: "desc" },
     include: { business: { select: { id: true, name: true } } },
   });
-  const names = await memberNameMap(pipelines.map((p) => p.ownerId));
+  const assigneeRows = await db.pipelineAssignee.findMany({
+    where: { pipelineId: { in: pipelines.map((p) => p.id) } },
+    orderBy: { assignedAt: "asc" },
+  });
+  const memberIds = [...new Set(assigneeRows.map((r) => r.memberId))];
+  const names = await memberNameMap(memberIds);
+  const assigneesByPipeline = new Map<string, string[]>();
+  for (const row of assigneeRows) {
+    const list = assigneesByPipeline.get(row.pipelineId) ?? [];
+    list.push(names.get(row.memberId) ?? "Unknown");
+    assigneesByPipeline.set(row.pipelineId, list);
+  }
   return pipelines.map((p) => ({
     id: p.id,
     code: p.code,
@@ -120,7 +131,7 @@ export async function getRecentPipelines(limit = 5) {
     currentPhase: p.currentPhase,
     businessId: p.business.id,
     businessName: p.business.name,
-    ownerName: p.ownerId ? (names.get(p.ownerId) ?? null) : null,
+    assigneeNames: assigneesByPipeline.get(p.id) ?? [],
     updatedAt: p.updatedAt,
   }));
 }

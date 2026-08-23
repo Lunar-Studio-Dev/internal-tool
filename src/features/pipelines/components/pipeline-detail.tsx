@@ -43,7 +43,6 @@ import { PipelineResourcesTab } from "@/features/pipelines/components/pipeline-r
 import { PipelineTasksTab } from "@/features/pipelines/components/pipeline-tasks-tab";
 import { PipelineOverview } from "@/features/pipelines/components/pipeline-overview";
 import {
-  LEAD_SOURCE_LABELS,
   PHASE_LABELS,
   WORKABLE_PHASES,
 } from "@/features/pipelines/constants";
@@ -308,8 +307,8 @@ export function PipelineDetail({ id }: { id: string }) {
               <TabsContent value="details" className="flex flex-col gap-4">
                 <BusinessAtAGlance
                   businessName={pipeline.business.name}
-                  ownerName={pipeline.ownerName}
-                  leadSourceLabel={LEAD_SOURCE_LABELS[pipeline.leadSource]}
+                  assigneeNames={pipeline.assigneeNames}
+                  pipelineNotes={pipeline.notes}
                   paymentPending={paymentPending}
                   contactInfo={phaseData?.contactInfo}
                 />

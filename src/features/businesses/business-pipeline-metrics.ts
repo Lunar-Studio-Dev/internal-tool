@@ -7,7 +7,7 @@ export type BusinessPipelineRow = {
   name: string;
   currentPhase: PhaseType;
   status: PipelineStatus;
-  ownerName: string | null;
+  assigneeNames: string[];
   createdAt: string;
   decision: ClientDecision | null;
   handedOff: boolean;

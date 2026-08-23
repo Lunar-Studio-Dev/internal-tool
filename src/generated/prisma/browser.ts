@@ -33,6 +33,51 @@ export type TeamMember = Prisma.TeamMemberModel
  */
 export type Business = Prisma.BusinessModel
 /**
+ * Model SourceCategory
+ * Top-level source type (Club, Existing client, External, …). Extensible via UI.
+ */
+export type SourceCategory = Prisma.SourceCategoryModel
+/**
+ * Model SourceSubCategory
+ * Club labels and optional sub-clubs under a source category.
+ */
+export type SourceSubCategory = Prisma.SourceSubCategoryModel
+/**
+ * Model Sector
+ * 
+ */
+export type Sector = Prisma.SectorModel
+/**
+ * Model Industry
+ * 
+ */
+export type Industry = Prisma.IndustryModel
+/**
+ * Model Market
+ * 
+ */
+export type Market = Prisma.MarketModel
+/**
+ * Model Location
+ * 
+ */
+export type Location = Prisma.LocationModel
+/**
+ * Model Tag
+ * 
+ */
+export type Tag = Prisma.TagModel
+/**
+ * Model BusinessLocation
+ * 
+ */
+export type BusinessLocation = Prisma.BusinessLocationModel
+/**
+ * Model BusinessTag
+ * 
+ */
+export type BusinessTag = Prisma.BusinessTagModel
+/**
  * Model Contact
  * A person at a Business. Exactly one Contact per business is Primary; the
  * invariant is enforced in a transaction (unset previous primary on change).
@@ -48,9 +93,14 @@ export type ActivityLog = Prisma.ActivityLogModel
  * Model Pipeline
  * One opportunity for a Business. Moves forward-only through the fixed phase
  * order via the state machine (promote / deactivate). Never hard-deleted.
- * ownerId / deactivatedById / deactivationReasonId are denormalized ids (no FK).
+ * deactivatedById / deactivationReasonId are denormalized ids (no FK).
  */
 export type Pipeline = Prisma.PipelineModel
+/**
+ * Model PipelineAssignee
+ * Optional team members assigned to a pipeline (many per pipeline).
+ */
+export type PipelineAssignee = Prisma.PipelineAssigneeModel
 /**
  * Model PipelinePhase
  * A single phase instance on a pipeline. Exactly one row per (pipeline, type).

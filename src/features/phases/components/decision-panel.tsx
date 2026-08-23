@@ -8,13 +8,7 @@ import { FieldLabel } from "@/components/common/form-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ReasonCombobox } from "@/components/common/combobox";
 import { Textarea } from "@/components/ui/textarea";
 import { useSetClientDecision, type PipelineDecisionDto } from "@/features/phases/api";
 import type { DeactivationReasonOption } from "@/features/pipelines/components/deactivate-dialog";
@@ -105,18 +99,12 @@ export function DecisionPanel({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
               <FieldLabel>Rejection reason</FieldLabel>
-              <Select value={reasonId} onValueChange={setReasonId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="If rejecting…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {reasons.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ReasonCombobox
+                options={reasons}
+                value={reasonId}
+                onChange={setReasonId}
+                placeholder="If rejecting…"
+              />
             </div>
             <div className="flex flex-col gap-2">
               <FieldLabel htmlFor="followUpDueAt">

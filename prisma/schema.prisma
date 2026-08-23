@@ -65,12 +65,36 @@ model Business {
   website     String?
   email       String?
   phone       String?
+  /// Denormalized display string; synced from profileIndustry on write.
   industry    String?
+  /// Denormalized display string; synced from primary location on write.
   location    String?
   address     String?
   social      Json? // { linkedin, instagram, facebook, x }
   metrics     Json? // business research / metrics (PHASE_7 also writes here)
   notes       String?
+
+  // Source / reference (step 3 onboarding)
+  sourceCategoryId           String?
+  sourceCategory             SourceCategory?    @relation(fields: [sourceCategoryId], references: [id])
+  sourceSubCategoryId        String?
+  sourceSubCategory          SourceSubCategory? @relation(fields: [sourceSubCategoryId], references: [id])
+  sourceReferenceNote        String?
+  sourceReferredByBusinessId String?
+  sourceReferredByBusiness   Business?          @relation("BusinessReferrals", fields: [sourceReferredByBusinessId], references: [id])
+  referredBusinesses         Business[]         @relation("BusinessReferrals")
+  sourceReferenceLabel       String?
+
+  // Profile (step 2 onboarding)
+  sectorId          String?
+  sector            Sector?            @relation(fields: [sectorId], references: [id])
+  industryId        String?
+  profileIndustry   Industry?          @relation(fields: [industryId], references: [id])
+  marketId          String?
+  market            Market?            @relation(fields: [marketId], references: [id])
+  businessLocations BusinessLocation[]
+  businessTags      BusinessTag[]
+
   contacts     Contact[]
   pipelines    Pipeline[]
   transactions Transaction[]
@@ -81,7 +105,127 @@ model Business {
 
   @@index([name])
   @@index([email])
+  @@index([sourceCategoryId])
+  @@index([sourceSubCategoryId])
+  @@index([sectorId])
+  @@index([industryId])
+  @@index([marketId])
+  @@index([sourceReferredByBusinessId])
   @@map("business")
+}
+
+/// Top-level source type (Club, Existing client, External, …). Extensible via UI.
+model SourceCategory {
+  id                  String              @id @default(cuid())
+  name                String              @unique
+  allowsSubcategories Boolean             @default(false)
+  active              Boolean             @default(true)
+  subcategories       SourceSubCategory[]
+  businesses          Business[]
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@map("source_category")
+}
+
+/// Club labels and optional sub-clubs under a source category.
+model SourceSubCategory {
+  id               String              @id @default(cuid())
+  sourceCategoryId String
+  sourceCategory   SourceCategory      @relation(fields: [sourceCategoryId], references: [id])
+  parentId         String?
+  parent           SourceSubCategory?  @relation("SubClubTree", fields: [parentId], references: [id])
+  children         SourceSubCategory[] @relation("SubClubTree")
+  name             String
+  active           Boolean             @default(true)
+  businesses       Business[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@unique([sourceCategoryId, parentId, name])
+  @@index([sourceCategoryId])
+  @@index([parentId])
+  @@map("source_sub_category")
+}
+
+model Sector {
+  id         String     @id @default(cuid())
+  name       String     @unique
+  active     Boolean    @default(true)
+  industries Industry[]
+  businesses Business[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@map("sector")
+}
+
+model Industry {
+  id        String     @id @default(cuid())
+  sectorId  String?
+  sector    Sector?    @relation(fields: [sectorId], references: [id])
+  name      String
+  active    Boolean    @default(true)
+  businesses Business[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([sectorId, name])
+  @@index([sectorId])
+  @@map("industry")
+}
+
+model Market {
+  id         String     @id @default(cuid())
+  name       String     @unique
+  active     Boolean    @default(true)
+  businesses Business[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@map("market")
+}
+
+model Location {
+  id        String             @id @default(cuid())
+  name      String             @unique
+  active    Boolean            @default(true)
+  businesses BusinessLocation[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@map("location")
+}
+
+model Tag {
+  id         String        @id @default(cuid())
+  name       String        @unique
+  active     Boolean       @default(true)
+  businesses BusinessTag[]
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@map("tag")
+}
+
+model BusinessLocation {
+  businessId String
+  locationId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  location   Location @relation(fields: [locationId], references: [id])
+
+  @@id([businessId, locationId])
+  @@map("business_location")
+}
+
+model BusinessTag {
+  businessId String
+  tagId      String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  tag        Tag      @relation(fields: [tagId], references: [id])
+
+  @@id([businessId, tagId])
+  @@map("business_tag")
 }
 
 /// A person at a Business. Exactly one Contact per business is Primary; the
@@ -144,32 +288,19 @@ enum PipelineStatus {
   COMPLETED
 }
 
-enum LeadSource {
-  WEBSITE
-  INSTAGRAM
-  LINKEDIN
-  REFERRAL
-  DIRECT
-  COLD
-  MANUAL_RESEARCH
-  OTHER
-}
-
 /// One opportunity for a Business. Moves forward-only through the fixed phase
 /// order via the state machine (promote / deactivate). Never hard-deleted.
-/// ownerId / deactivatedById / deactivationReasonId are denormalized ids (no FK).
+/// deactivatedById / deactivationReasonId are denormalized ids (no FK).
 model Pipeline {
-  id                   String          @id @default(cuid())
-  code                 String          @unique // PL-00123
+  id                   String              @id @default(cuid())
+  code                 String              @unique // PL-00123
   businessId           String
-  business             Business        @relation(fields: [businessId], references: [id])
+  business             Business            @relation(fields: [businessId], references: [id])
   name                 String
-  opportunityType      String?
-  leadSource           LeadSource      @default(OTHER)
-  ownerId              String?
   notes                String?
-  currentPhase         PhaseType       @default(DISCOVERY)
-  status               PipelineStatus  @default(ACTIVE)
+  currentPhase         PhaseType           @default(DISCOVERY)
+  status               PipelineStatus      @default(ACTIVE)
+  assignees            PipelineAssignee[]
   phases               PipelinePhase[]
   discovery            Discovery?
   understanding        BusinessUnderstanding?
@@ -195,6 +326,18 @@ model Pipeline {
   @@map("pipeline")
 }
 
+/// Optional team members assigned to a pipeline (many per pipeline).
+model PipelineAssignee {
+  pipelineId String
+  memberId   String
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now())
+
+  @@id([pipelineId, memberId])
+  @@index([memberId])
+  @@map("pipeline_assignee")
+}
+
 /// A single phase instance on a pipeline. Exactly one row per (pipeline, type).
 /// Phase-specific payload tables attach in PHASE_7.
 model PipelinePhase {
@@ -203,7 +346,6 @@ model PipelinePhase {
   pipeline     Pipeline    @relation(fields: [pipelineId], references: [id])
   type         PhaseType
   status       PhaseStatus @default(ACTIVE)
-  ownerId      String?
   startedAt    DateTime    @default(now())
   promotedAt   DateTime?
   promotedById String?

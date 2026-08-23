@@ -16,7 +16,7 @@ export function PhaseViewShell({
   phaseLabel,
   phaseStatus,
   startedAt,
-  ownerName,
+  assigneeNames,
   notes,
   work,
   actions,
@@ -24,7 +24,7 @@ export function PhaseViewShell({
   phaseLabel: string;
   phaseStatus: PhaseStatus | null;
   startedAt: Date | null;
-  ownerName: string | null;
+  assigneeNames: string[];
   notes: string | null;
   /** Phase tasks / resources / follow-ups panel. Falls back to empty slots. */
   work?: ReactNode;
@@ -45,9 +45,13 @@ export function PhaseViewShell({
             </span>
           </div>
           <div className="flex flex-col gap-0.5">
-            <span className="text-xs text-muted-foreground">Owner</span>
+            <span className="text-xs text-muted-foreground">Assigned to</span>
             <span className="text-sm">
-              {ownerName ?? <span className="text-muted-foreground">Unassigned</span>}
+              {assigneeNames.length ? (
+                assigneeNames.join(", ")
+              ) : (
+                <span className="text-muted-foreground">Unassigned</span>
+              )}
             </span>
           </div>
           <div className="col-span-2 flex flex-col gap-0.5 sm:col-span-1">

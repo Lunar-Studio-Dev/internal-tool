@@ -24,6 +24,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  BusinessCombobox,
+  EnumCombobox,
+  PipelineCombobox,
+  QuotationCombobox,
+} from "@/components/common/combobox";
+import type { ComboboxOption } from "@/components/common/combobox";
 import { Textarea } from "@/components/ui/textarea";
 import { accountQueries, useAddTransaction } from "@/features/accounts/api";
 import {
@@ -32,8 +39,7 @@ import {
   EXPENSE_CATEGORY_OPTIONS,
 } from "@/features/accounts/constants";
 import { addTransactionSchema } from "@/features/accounts/schemas/transaction.schema";
-import { BusinessCombobox } from "@/features/pipelines/components/business-combobox";
-import { formatINR, rupeesToPaise } from "@/features/phases/constants";
+import { rupeesToPaise } from "@/features/phases/constants";
 import { mutationErrorMessage } from "@/lib/api/errors";
 import { parseForm, type FieldErrors } from "@/lib/form";
 import { TransactionType } from "@/generated/prisma/enums";
@@ -71,6 +77,15 @@ export function AddTransactionDialog({ trigger }: { trigger?: ReactNode }) {
     if (!pipelineId) return [];
     return all.filter((q) => q.pipelineId === pipelineId);
   }, [optionsQuery.data?.quotations, pipelineId]);
+
+  const expenseCategoryOptions = useMemo(
+    (): ComboboxOption[] =>
+      EXPENSE_CATEGORY_OPTIONS.map((value) => ({
+        value,
+        label: EXPENSE_CATEGORY_LABELS[value],
+      })),
+    [],
+  );
 
   function resetForm() {
     setType(TransactionType.EARNING);
@@ -214,18 +229,12 @@ export function AddTransactionDialog({ trigger }: { trigger?: ReactNode }) {
             ) : (
               <div className="flex flex-col gap-1.5">
                 <FieldLabel htmlFor="expenseCategory">Category</FieldLabel>
-                <Select value={expenseCategory} onValueChange={setExpenseCategory}>
-                  <SelectTrigger id="expenseCategory">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EXPENSE_CATEGORY_OPTIONS.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {EXPENSE_CATEGORY_LABELS[value]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <EnumCombobox
+                  id="expenseCategory"
+                  options={expenseCategoryOptions}
+                  value={expenseCategory}
+                  onChange={setExpenseCategory}
+                />
                 <FieldError error={errors.expenseCategory} />
               </div>
             )}
@@ -260,9 +269,13 @@ export function AddTransactionDialog({ trigger }: { trigger?: ReactNode }) {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <FieldLabel htmlFor="txnPipeline">Pipeline</FieldLabel>
-                  <Select
+                  <PipelineCombobox
+                    id="txnPipeline"
+                    options={pipelineOptions}
                     value={pipelineId || "__none__"}
-                    onValueChange={(v) => {
+                    allowClear
+                    clearValue="__none__"
+                    onChange={(v) => {
                       const next = v === "__none__" ? "" : v;
                       setPipelineId(next);
                       setQuotationId("");
@@ -271,39 +284,19 @@ export function AddTransactionDialog({ trigger }: { trigger?: ReactNode }) {
                         if (pipeline) setBusinessId(pipeline.businessId);
                       }
                     }}
-                  >
-                    <SelectTrigger id="txnPipeline">
-                      <SelectValue placeholder="Select pipeline" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">None</SelectItem>
-                      {pipelineOptions.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.code} · {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <FieldLabel htmlFor="txnQuotation">Quotation</FieldLabel>
-                  <Select
+                  <QuotationCombobox
+                    id="txnQuotation"
+                    options={quotationOptions}
                     value={quotationId || "__none__"}
-                    onValueChange={(v) => setQuotationId(v === "__none__" ? "" : v)}
+                    allowClear
+                    clearValue="__none__"
                     disabled={!pipelineId}
-                  >
-                    <SelectTrigger id="txnQuotation">
-                      <SelectValue placeholder="Select quotation" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">None</SelectItem>
-                      {quotationOptions.map((q) => (
-                        <SelectItem key={q.id} value={q.id}>
-                          V{q.version} · {formatINR(q.subtotal)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(v) => setQuotationId(v === "__none__" ? "" : v)}
+                  />
                 </div>
               </div>
             ) : null}

@@ -7,7 +7,7 @@ export type PipelineListRow = {
   name: string;
   currentPhase: PhaseType;
   status: PipelineStatus;
-  ownerName: string;
+  assigneeNames: string[];
 };
 
 export type PipelineListMetrics = {

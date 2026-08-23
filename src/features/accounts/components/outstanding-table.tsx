@@ -11,17 +11,11 @@ import {
   ListFilterBar,
   useFilterSheetDraft,
 } from "@/components/common/list-filter-bar";
+import { BusinessCombobox } from "@/components/common/combobox";
 import { QueryGate } from "@/components/common/query-gate";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { accountQueries, type OutstandingItemDto } from "@/features/accounts/api";
 import { RecordPaymentDialog } from "@/features/payments/components/record-payment-dialog";
 import { formatINR } from "@/features/phases/constants";
@@ -62,6 +56,21 @@ export function OutstandingTable() {
   }, [query.data, businessId, search]);
 
   const activeFilterCount = countActiveFilters({ businessId }, FILTER_DEFAULTS);
+
+  const businessOptions = optionsQuery.data?.businesses ?? [];
+
+  const businessFilter = (value: string, onChange: (value: string) => void, className?: string) => (
+    <BusinessCombobox
+      options={businessOptions}
+      value={value || "__all__"}
+      onChange={(v) => onChange(v === "__all__" ? "" : v)}
+      placeholder="Business"
+      allowAll
+      allLabel="All businesses"
+      allValue="__all__"
+      className={className}
+    />
+  );
 
   const columns: DataTableColumn<OutstandingItemDto>[] = [
     {
@@ -161,44 +170,12 @@ export function OutstandingTable() {
           onResetFilters={() => setBusinessId("")}
           filterSheetContent={
             <FilterSheetSection label="Business">
-              <Select
-                value={draft.businessId || "__all__"}
-                onValueChange={(v) =>
-                  setDraft((d) => ({ ...d, businessId: v === "__all__" ? "" : v }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All businesses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">All businesses</SelectItem>
-                  {(optionsQuery.data?.businesses ?? []).map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {businessFilter(draft.businessId ?? "", (v) =>
+                setDraft((d) => ({ ...d, businessId: v })),
+              )}
             </FilterSheetSection>
           }
-          desktopFilters={
-            <Select
-              value={businessId || "__all__"}
-              onValueChange={(v) => setBusinessId(v === "__all__" ? "" : v)}
-            >
-              <SelectTrigger className="w-[11rem]">
-                <SelectValue placeholder="Business" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">All businesses</SelectItem>
-                {(optionsQuery.data?.businesses ?? []).map((b) => (
-                  <SelectItem key={b.id} value={b.id}>
-                    {b.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          }
+          desktopFilters={businessFilter(businessId, setBusinessId, "w-[11rem]")}
         />
 
         {filtered.length === 0 ? (

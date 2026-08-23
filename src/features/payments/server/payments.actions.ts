@@ -172,15 +172,21 @@ export async function recordPaymentAction(input: unknown): Promise<RecordPayment
       entityId: pipeline.id,
     });
 
-    if (pipeline.ownerId && pipeline.ownerId !== member.id) {
-      await createNotification({
-        recipientId: pipeline.ownerId,
-        type: "PAYMENT",
-        title: `Payment recorded on ${pipeline.code}`,
-        body: `₹${(d.amountPaise / 100).toLocaleString("en-IN")} received`,
-        entityType: "Pipeline",
-        entityId: pipeline.id,
-      });
+    const assignees = await db.pipelineAssignee.findMany({
+      where: { pipelineId: pipeline.id },
+      select: { memberId: true },
+    });
+    for (const assignee of assignees) {
+      if (assignee.memberId !== member.id) {
+        await createNotification({
+          recipientId: assignee.memberId,
+          type: "PAYMENT",
+          title: `Payment recorded on ${pipeline.code}`,
+          body: `₹${(d.amountPaise / 100).toLocaleString("en-IN")} received`,
+          entityType: "Pipeline",
+          entityId: pipeline.id,
+        });
+      }
     }
 
     return {

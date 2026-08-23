@@ -66,8 +66,6 @@ export function BusinessDetail({ id }: { id: string }) {
         website: business.website ?? "",
         email: business.email ?? "",
         phone: business.phone ?? "",
-        industry: business.industry ?? "",
-        location: business.location ?? "",
         address: business.address ?? "",
         notes: business.notes ?? "",
         social: {
@@ -76,12 +74,33 @@ export function BusinessDetail({ id }: { id: string }) {
           facebook: social.facebook ?? "",
           x: social.x ?? "",
         },
+        sectorId: business.sectorId ?? "",
+        industryId: business.industryId ?? "",
+        marketId: business.marketId ?? "",
+        locationIds: business.businessLocations.map((bl) => bl.locationId),
+        tagIds: business.businessTags.map((bt) => bt.tagId),
+        sourceCategoryId: business.sourceCategoryId ?? "",
+        sourceCategoryName: business.sourceCategory?.name ?? "",
+        sourceSubCategoryId: business.sourceSubCategoryId ?? "",
+        sourceReferredByBusinessId: business.sourceReferredByBusinessId ?? "",
+        sourceReferenceLabel: business.sourceReferenceLabel ?? "",
+        sourceReferenceNote: business.sourceReferenceNote ?? "",
       }
     : null;
 
-  const subtitle = [business?.website, business?.industry, business?.location]
+  const subtitle = [
+    business?.website,
+    business?.profileIndustry?.name ?? business?.industry,
+    business?.businessLocations.map((bl) => bl.location.name).join(", ") || business?.location,
+  ]
     .filter(Boolean)
     .join(" · ");
+
+  const locationLabels = business?.businessLocations.map((bl) => bl.location.name).join(", ");
+  const tagLabels = business?.businessTags.map((bt) => bt.tag.name).join(", ");
+  const sourceLabel = business?.sourceCategory?.name;
+  const clubLabel = business?.sourceSubCategory?.name;
+  const referrerLabel = business?.sourceReferredByBusiness?.name;
 
   return (
     <QueryGate
@@ -127,8 +146,11 @@ export function BusinessDetail({ id }: { id: string }) {
                       <InfoRow label="Website" value={business.website} />
                       <InfoRow label="Email" value={business.email} />
                       <InfoRow label="Phone" value={business.phone} />
-                      <InfoRow label="Industry" value={business.industry} />
-                      <InfoRow label="Location" value={business.location} />
+                      <InfoRow label="Industry" value={business.profileIndustry?.name ?? business.industry} />
+                      <InfoRow label="Sector" value={business.sector?.name} />
+                      <InfoRow label="Market" value={business.market?.name} />
+                      <InfoRow label="Locations" value={locationLabels || business.location} />
+                      <InfoRow label="Tags" value={tagLabels || undefined} />
                       <InfoRow label="Address" value={business.address} />
                       {socialEntries.length > 0 ? (
                         <div className="col-span-2 flex flex-col gap-1">
@@ -145,6 +167,25 @@ export function BusinessDetail({ id }: { id: string }) {
                       {business.notes ? (
                         <div className="col-span-2">
                           <InfoRow label="Notes" value={business.notes} />
+                        </div>
+                      ) : null}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Source</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <InfoRow label="Category" value={sourceLabel} />
+                      {clubLabel ? <InfoRow label="Club" value={clubLabel} /> : null}
+                      {referrerLabel ? <InfoRow label="Referred by" value={referrerLabel} /> : null}
+                      {business.sourceReferenceLabel ? (
+                        <InfoRow label="Reference" value={business.sourceReferenceLabel} />
+                      ) : null}
+                      {business.sourceReferenceNote ? (
+                        <div className="col-span-2">
+                          <InfoRow label="Reference note" value={business.sourceReferenceNote} />
                         </div>
                       ) : null}
                     </CardContent>

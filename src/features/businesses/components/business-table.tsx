@@ -19,14 +19,9 @@ import {
 import { MetricCard, METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import { QueryGate } from "@/components/common/query-gate";
 import { TablePageSkeleton } from "@/components/common/skeletons";
+import { EnumCombobox } from "@/components/common/combobox";
+import type { ComboboxOption } from "@/components/common/combobox/types";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { businessQueries } from "@/features/businesses/api";
 import {
   computeBusinessListMetrics,
@@ -41,21 +36,68 @@ export type BusinessRow = {
   name: string;
   website: string;
   industry: string;
+  industryId: string;
+  sectorId: string;
+  marketId: string;
+  sourceCategoryId: string;
+  locationIds: string[];
+  tagIds: string[];
   primaryContact: string;
   pipelineCount: number;
   activePipelineCount: number;
 };
 
-const FILTER_DEFAULTS = { industry: "ALL" as const };
+type TableFilters = {
+  industry: "ALL" | string;
+  sector: "ALL" | string;
+  market: "ALL" | string;
+  sourceCategory: "ALL" | string;
+  location: "ALL" | string;
+};
+
+const FILTER_DEFAULTS: TableFilters = {
+  industry: "ALL",
+  sector: "ALL",
+  market: "ALL",
+  sourceCategory: "ALL",
+  location: "ALL",
+};
+
+function FilterCombobox({
+  options,
+  value,
+  onChange,
+  placeholder,
+  allLabel,
+}: {
+  options: ComboboxOption[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  allLabel: string;
+}) {
+  return (
+    <EnumCombobox
+      options={options}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      allowClear
+      clearLabel={allLabel}
+      clearValue="ALL"
+      searchable
+    />
+  );
+}
 
 export function BusinessTable() {
   const query = useQuery(businessQueries.list());
   const canWrite = useCan("business:write");
   const [search, setSearch] = useState("");
-  const [industry, setIndustry] = useState<"ALL" | string>("ALL");
+  const [filters, setFilters] = useState<TableFilters>(FILTER_DEFAULTS);
   const [listFilter, setListFilter] = useState<BusinessListFilter>("all");
   const [filterOpen, setFilterOpen] = useState(false);
-  const { draft, setDraft } = useFilterSheetDraft({ industry }, filterOpen);
+  const { draft, setDraft } = useFilterSheetDraft(filters, filterOpen);
 
   const businesses: BusinessRow[] = useMemo(
     () =>
@@ -63,7 +105,13 @@ export function BusinessTable() {
         id: b.id,
         name: b.name,
         website: b.website ?? "",
-        industry: b.industry ?? "",
+        industry: b.profileIndustry?.name ?? b.industry ?? "",
+        industryId: b.industryId ?? "",
+        sectorId: b.sectorId ?? "",
+        marketId: b.marketId ?? "",
+        sourceCategoryId: b.sourceCategoryId ?? "",
+        locationIds: b.businessLocations.map((bl) => bl.locationId),
+        tagIds: b.businessTags.map((bt) => bt.tagId),
         primaryContact: b.contacts[0]?.name ?? "",
         pipelineCount: b.pipelines.length,
         activePipelineCount: b.pipelines.filter((p) => p.status === "ACTIVE").length,
@@ -71,13 +119,29 @@ export function BusinessTable() {
     [query.data],
   );
 
-  const industries = useMemo(
-    () => [...new Set(businesses.map((b) => b.industry).filter(Boolean))].sort(),
-    [businesses],
-  );
+  const filterOptions = useMemo(() => {
+    const uniq = (values: string[]) => [...new Set(values.filter(Boolean))].sort();
+    const labelMap = new Map<string, string>();
+    for (const b of query.data ?? []) {
+      if (b.profileIndustry) labelMap.set(b.profileIndustry.id, b.profileIndustry.name);
+      if (b.sector) labelMap.set(b.sector.id, b.sector.name);
+      if (b.market) labelMap.set(b.market.id, b.market.name);
+      if (b.sourceCategory) labelMap.set(b.sourceCategory.id, b.sourceCategory.name);
+      for (const bl of b.businessLocations) labelMap.set(bl.location.id, bl.location.name);
+    }
+    const toOpts = (ids: string[]): ComboboxOption[] =>
+      ids.map((id) => ({ value: id, label: labelMap.get(id) ?? id }));
+    return {
+      industries: toOpts(uniq(businesses.map((b) => b.industryId))),
+      sectors: toOpts(uniq(businesses.map((b) => b.sectorId))),
+      markets: toOpts(uniq(businesses.map((b) => b.marketId))),
+      sourceCategories: toOpts(uniq(businesses.map((b) => b.sourceCategoryId))),
+      locations: toOpts(uniq(businesses.flatMap((b) => b.locationIds))),
+    };
+  }, [businesses, query.data]);
 
   const metrics = useMemo(() => computeBusinessListMetrics(businesses), [businesses]);
-  const activeFilterCount = countActiveFilters({ industry }, FILTER_DEFAULTS);
+  const activeFilterCount = countActiveFilters(filters, FILTER_DEFAULTS);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -85,10 +149,16 @@ export function BusinessTable() {
       if (q && !`${b.name} ${b.website} ${b.primaryContact}`.toLowerCase().includes(q)) {
         return false;
       }
-      if (industry !== "ALL" && b.industry !== industry) return false;
+      if (filters.industry !== "ALL" && b.industryId !== filters.industry) return false;
+      if (filters.sector !== "ALL" && b.sectorId !== filters.sector) return false;
+      if (filters.market !== "ALL" && b.marketId !== filters.market) return false;
+      if (filters.sourceCategory !== "ALL" && b.sourceCategoryId !== filters.sourceCategory) {
+        return false;
+      }
+      if (filters.location !== "ALL" && !b.locationIds.includes(filters.location)) return false;
       return true;
     });
-  }, [businesses, search, industry, listFilter]);
+  }, [businesses, search, filters, listFilter]);
 
   const columns: DataTableColumn<BusinessRow>[] = [
     {
@@ -109,6 +179,12 @@ export function BusinessTable() {
         ) : (
           <span className="text-muted-foreground">—</span>
         ),
+    },
+    {
+      id: "industry",
+      header: "Industry",
+      cell: (b) =>
+        b.industry ? b.industry : <span className="text-muted-foreground">—</span>,
     },
     {
       id: "contact",
@@ -143,20 +219,23 @@ export function BusinessTable() {
     },
   ];
 
-  const industrySelect = (
-    <Select value={industry} onValueChange={setIndustry}>
-      <SelectTrigger className="w-48">
-        <SelectValue placeholder="Industry" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="ALL">All industries</SelectItem>
-        {industries.map((value) => (
-          <SelectItem key={value} value={value}>
-            {value}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+  const desktopFilters = (
+    <div className="flex flex-wrap items-center gap-2">
+      <FilterCombobox
+        options={filterOptions.industries}
+        value={filters.industry}
+        onChange={(value) => setFilters((f) => ({ ...f, industry: value }))}
+        placeholder="Industry"
+        allLabel="All industries"
+      />
+      <FilterCombobox
+        options={filterOptions.locations}
+        value={filters.location}
+        onChange={(value) => setFilters((f) => ({ ...f, location: value }))}
+        placeholder="Location"
+        allLabel="All locations"
+      />
+    </div>
   );
 
   const createAction = canWrite ? (
@@ -175,7 +254,7 @@ export function BusinessTable() {
       isPending={query.isPending}
       isError={query.isError}
       error={query.error}
-      skeleton={<TablePageSkeleton columns={6} />}
+      skeleton={<TablePageSkeleton columns={7} />}
     >
     <div className="flex flex-col gap-4">
       <div className={METRIC_GRID_CLASS}>
@@ -216,29 +295,58 @@ export function BusinessTable() {
         activeFilterCount={activeFilterCount}
         filterOpen={filterOpen}
         onFilterOpenChange={setFilterOpen}
-        onApplyFilters={() => setIndustry(draft.industry)}
+        onApplyFilters={() => setFilters(draft)}
         onResetFilters={() => setDraft(FILTER_DEFAULTS)}
         filterSheetContent={
-          <FilterSheetSection label="Industry">
-            <Select
-              value={draft.industry}
-              onValueChange={(value) => setDraft({ industry: value })}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Industry" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All industries</SelectItem>
-                {industries.map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {value}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FilterSheetSection>
+          <>
+            <FilterSheetSection label="Industry">
+              <FilterCombobox
+                options={filterOptions.industries}
+                value={draft.industry}
+                onChange={(value) => setDraft({ ...draft, industry: value })}
+                placeholder="Industry"
+                allLabel="All industries"
+              />
+            </FilterSheetSection>
+            <FilterSheetSection label="Sector">
+              <FilterCombobox
+                options={filterOptions.sectors}
+                value={draft.sector}
+                onChange={(value) => setDraft({ ...draft, sector: value })}
+                placeholder="Sector"
+                allLabel="All sectors"
+              />
+            </FilterSheetSection>
+            <FilterSheetSection label="Market">
+              <FilterCombobox
+                options={filterOptions.markets}
+                value={draft.market}
+                onChange={(value) => setDraft({ ...draft, market: value })}
+                placeholder="Market"
+                allLabel="All markets"
+              />
+            </FilterSheetSection>
+            <FilterSheetSection label="Source">
+              <FilterCombobox
+                options={filterOptions.sourceCategories}
+                value={draft.sourceCategory}
+                onChange={(value) => setDraft({ ...draft, sourceCategory: value })}
+                placeholder="Source"
+                allLabel="All sources"
+              />
+            </FilterSheetSection>
+            <FilterSheetSection label="Location">
+              <FilterCombobox
+                options={filterOptions.locations}
+                value={draft.location}
+                onChange={(value) => setDraft({ ...draft, location: value })}
+                placeholder="Location"
+                allLabel="All locations"
+              />
+            </FilterSheetSection>
+          </>
         }
-        desktopFilters={industrySelect}
+        desktopFilters={desktopFilters}
         actions={createAction}
       />
 

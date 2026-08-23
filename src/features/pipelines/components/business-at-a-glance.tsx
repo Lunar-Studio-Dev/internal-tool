@@ -11,14 +11,14 @@ import type { PhaseDataDto } from "@/features/phases/api";
 
 export function BusinessAtAGlance({
   businessName,
-  ownerName,
-  leadSourceLabel,
+  assigneeNames,
+  pipelineNotes,
   paymentPending,
   contactInfo,
 }: {
   businessName: string;
-  ownerName: string | null;
-  leadSourceLabel: string;
+  assigneeNames: string[];
+  pipelineNotes: string | null;
   paymentPending: boolean;
   contactInfo: PhaseDataDto["contactInfo"] | undefined;
 }) {
@@ -56,10 +56,14 @@ export function BusinessAtAGlance({
         ) : null}
         <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
           <span>
-            Owner: <span className="text-foreground">{ownerName ?? "Unassigned"}</span>
+            Assigned to:{" "}
+            <span className="text-foreground">
+              {assigneeNames.length ? assigneeNames.join(", ") : "Unassigned"}
+            </span>
           </span>
           <span>
-            Lead: <span className="text-foreground">{leadSourceLabel}</span>
+            Notes:{" "}
+            <span className="text-foreground">{pipelineNotes?.trim() || "—"}</span>
           </span>
         </div>
         {paymentPending ? <StatusBadge kind="PENDING" className="self-start" /> : null}

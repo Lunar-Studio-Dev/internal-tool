@@ -164,7 +164,9 @@ export async function getTeamWorkloadAnalytics() {
             dueAt: { lt: now },
           },
         }),
-        db.pipeline.count({ where: { ownerId: m.id, status: PipelineStatus.ACTIVE } }),
+        db.pipeline.count({
+          where: { assignees: { some: { memberId: m.id } }, status: PipelineStatus.ACTIVE },
+        }),
         db.followUp.count({
           where: { assigneeId: m.id, completedAt: null },
         }),

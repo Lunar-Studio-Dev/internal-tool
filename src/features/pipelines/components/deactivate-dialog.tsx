@@ -16,13 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ReasonCombobox } from "@/components/common/combobox";
 import { Textarea } from "@/components/ui/textarea";
 import { useDeactivatePipeline } from "@/features/pipelines/api";
 import { deactivatePipelineSchema } from "@/features/pipelines/schemas/pipeline.schema";
@@ -86,18 +80,13 @@ export function DeactivateDialog({
             <FieldLabel htmlFor="deact-reason" required>
               Reason
             </FieldLabel>
-            <Select value={reasonId} onValueChange={setReasonId}>
-              <SelectTrigger id="deact-reason">
-                <SelectValue placeholder="Select a reason" />
-              </SelectTrigger>
-              <SelectContent>
-                {reasons.map((reason) => (
-                  <SelectItem key={reason.id} value={reason.id}>
-                    {reason.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ReasonCombobox
+              id="deact-reason"
+              options={reasons}
+              value={reasonId}
+              onChange={setReasonId}
+              placeholder="Select a reason"
+            />
             <FieldError error={errors.reasonId} />
           </div>
           <div className="flex flex-col gap-2">

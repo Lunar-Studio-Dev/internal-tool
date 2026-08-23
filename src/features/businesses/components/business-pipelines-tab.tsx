@@ -26,6 +26,7 @@ import {
 import { MetricCard, MetricCardSkeleton, METRIC_GRID_CLASS } from "@/components/common/metric-card";
 import { QuerySection } from "@/components/common/query-gate";
 import { StatusBadge } from "@/components/common/status-badge";
+import { StringListCombobox } from "@/components/common/combobox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -71,7 +72,7 @@ const FILTER_DEFAULTS = {
   chipFilter: "all" as BusinessPipelineFilter,
   phase: "ALL" as "ALL" | PhaseType,
   status: "ALL" as "ALL" | PipelineStatus,
-  owner: "ALL" as "ALL" | string,
+  assignee: "ALL" as "ALL" | string,
 };
 
 export function BusinessPipelinesTab({
@@ -85,16 +86,16 @@ export function BusinessPipelinesTab({
   const [search, setSearch] = useState("");
   const [phase, setPhase] = useState<"ALL" | PhaseType>("ALL");
   const [status, setStatus] = useState<"ALL" | PipelineStatus>("ALL");
-  const [owner, setOwner] = useState<"ALL" | string>("ALL");
+  const [assignee, setAssignee] = useState<"ALL" | string>("ALL");
   const [chipFilter, setChipFilter] = useState<BusinessPipelineFilter>("all");
   const [filterOpen, setFilterOpen] = useState(false);
   const { draft, setDraft } = useFilterSheetDraft(
-    { chipFilter, phase, status, owner },
+    { chipFilter, phase, status, assignee },
     filterOpen,
   );
 
   const activeFilterCount = countActiveFilters(
-    { chipFilter, phase, status, owner },
+    { chipFilter, phase, status, assignee },
     FILTER_DEFAULTS,
   );
 
@@ -106,7 +107,7 @@ export function BusinessPipelinesTab({
         name: p.name,
         currentPhase: p.currentPhase,
         status: p.status,
-        ownerName: p.ownerName,
+        assigneeNames: p.assigneeNames ?? [],
         createdAt: p.createdAt,
         decision: p.decision,
         handedOff: p.handedOff,
@@ -117,8 +118,9 @@ export function BusinessPipelinesTab({
 
   const metrics = useMemo(() => computeBusinessPipelineMetrics(pipelines), [pipelines]);
 
-  const owners = useMemo(
-    () => [...new Set(pipelines.map((p) => p.ownerName).filter(Boolean))].sort() as string[],
+  const assignees = useMemo(
+    () =>
+      [...new Set(pipelines.flatMap((p) => p.assigneeNames).filter(Boolean))].sort() as string[],
     [pipelines],
   );
 
@@ -126,15 +128,16 @@ export function BusinessPipelinesTab({
     let rows = filterBusinessPipelines(pipelines, chipFilter);
     const q = search.trim().toLowerCase();
     return rows.filter((p) => {
-      if (q && !`${p.code} ${p.name} ${p.ownerName ?? ""}`.toLowerCase().includes(q)) {
+      const assigneeText = p.assigneeNames.join(" ");
+      if (q && !`${p.code} ${p.name} ${assigneeText}`.toLowerCase().includes(q)) {
         return false;
       }
       if (phase !== "ALL" && p.currentPhase !== phase) return false;
       if (status !== "ALL" && p.status !== status) return false;
-      if (owner !== "ALL" && p.ownerName !== owner) return false;
+      if (assignee !== "ALL" && !p.assigneeNames.includes(assignee)) return false;
       return true;
     });
-  }, [pipelines, chipFilter, search, phase, status, owner]);
+  }, [pipelines, chipFilter, search, phase, status, assignee]);
 
   const columns: DataTableColumn<BusinessPipelineRow>[] = useMemo(
     () => [
@@ -148,8 +151,8 @@ export function BusinessPipelinesTab({
         ),
       },
       {
-        id: "opportunity",
-        header: "Opportunity",
+        id: "name",
+        header: "Pipeline name",
         cell: (p) => (
           <Link href={`/pipelines/${p.id}`} className="hover:underline">
             {p.name}
@@ -181,9 +184,14 @@ export function BusinessPipelinesTab({
           ),
       },
       {
-        id: "owner",
-        header: "Owner",
-        cell: (p) => p.ownerName ?? <span className="text-muted-foreground">—</span>,
+        id: "assignees",
+        header: "Assigned to",
+        cell: (p) =>
+          p.assigneeNames.length ? (
+            p.assigneeNames.join(", ")
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
       },
       {
         id: "created",
@@ -308,7 +316,7 @@ export function BusinessPipelinesTab({
           <ListFilterBar
             search={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Search code, opportunity, owner…"
+            searchPlaceholder="Search code, pipeline name, assignee…"
             activeFilterCount={activeFilterCount}
             filterOpen={filterOpen}
             onFilterOpenChange={setFilterOpen}
@@ -316,7 +324,7 @@ export function BusinessPipelinesTab({
               setChipFilter(draft.chipFilter);
               setPhase(draft.phase);
               setStatus(draft.status);
-              setOwner(draft.owner);
+              setAssignee(draft.assignee);
             }}
             onResetFilters={() => setDraft(FILTER_DEFAULTS)}
             filterSheetContent={
@@ -368,24 +376,17 @@ export function BusinessPipelinesTab({
                     </SelectContent>
                   </Select>
                 </FilterSheetSection>
-                {owners.length > 0 ? (
-                  <FilterSheetSection label="Owner">
-                    <Select
-                      value={draft.owner}
-                      onValueChange={(value) => setDraft((prev) => ({ ...prev, owner: value }))}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Owner" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ALL">All owners</SelectItem>
-                        {owners.map((name) => (
-                          <SelectItem key={name} value={name}>
-                            {name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                {assignees.length > 0 ? (
+                  <FilterSheetSection label="Assigned to">
+                    <StringListCombobox
+                      options={assignees}
+                      value={draft.assignee}
+                      onChange={(value) => setDraft((prev) => ({ ...prev, assignee: value }))}
+                      placeholder="Assigned to"
+                      allowAll
+                      allLabel="All assignees"
+                      allValue="ALL"
+                    />
                   </FilterSheetSection>
                 ) : null}
               </>
@@ -437,14 +438,14 @@ export function BusinessPipelinesTab({
                     ))}
                   </SelectContent>
                 </Select>
-                {owners.length > 0 ? (
-                  <Select value={owner} onValueChange={setOwner}>
+                {assignees.length > 0 ? (
+                  <Select value={assignee} onValueChange={setAssignee}>
                     <SelectTrigger className="w-40">
-                      <SelectValue placeholder="Owner" />
+                      <SelectValue placeholder="Assigned to" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ALL">All owners</SelectItem>
-                      {owners.map((name) => (
+                      <SelectItem value="ALL">All assignees</SelectItem>
+                      {assignees.map((name) => (
                         <SelectItem key={name} value={name}>
                           {name}
                         </SelectItem>

@@ -64,7 +64,7 @@ export async function promotePhaseInTx(
 
   await tx.pipelinePhase.upsert({
     where: { pipelineId_type: { pipelineId, type: to } },
-    create: { pipelineId, type: to, status: PhaseStatus.ACTIVE, ownerId: pipeline.ownerId },
+    create: { pipelineId, type: to, status: PhaseStatus.ACTIVE },
     update: { status: PhaseStatus.ACTIVE },
   });
 

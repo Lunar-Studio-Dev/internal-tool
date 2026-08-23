@@ -4,17 +4,48 @@ import { requirePermission } from "@/lib/auth/member";
 import { db } from "@/lib/db";
 import { memberNameMap } from "@/lib/lookups";
 
+type AssigneeFields = { assigneeIds: string[]; assigneeNames: string[] };
+
+async function pipelineAssigneeMap(pipelineIds: string[]) {
+  const map = new Map<string, AssigneeFields>();
+  if (!pipelineIds.length) return map;
+
+  const rows = await db.pipelineAssignee.findMany({
+    where: { pipelineId: { in: pipelineIds } },
+    orderBy: { assignedAt: "asc" },
+  });
+  const memberIds = [...new Set(rows.map((r) => r.memberId))];
+  const names = await memberNameMap(memberIds);
+
+  for (const row of rows) {
+    const entry = map.get(row.pipelineId) ?? { assigneeIds: [], assigneeNames: [] };
+    entry.assigneeIds.push(row.memberId);
+    entry.assigneeNames.push(names.get(row.memberId) ?? "Unknown");
+    map.set(row.pipelineId, entry);
+  }
+  return map;
+}
+
+function withAssignees<T extends { id: string }>(
+  item: T,
+  map: Map<string, AssigneeFields>,
+): T & AssigneeFields {
+  const entry = map.get(item.id);
+  return {
+    ...item,
+    assigneeIds: entry?.assigneeIds ?? [],
+    assigneeNames: entry?.assigneeNames ?? [],
+  };
+}
+
 export async function listPipelines() {
   await requirePermission("pipeline:read");
   const pipelines = await db.pipeline.findMany({
     orderBy: { createdAt: "desc" },
     include: { business: { select: { id: true, name: true } } },
   });
-  const names = await memberNameMap(pipelines.map((p) => p.ownerId));
-  return pipelines.map((p) => ({
-    ...p,
-    ownerName: p.ownerId ? (names.get(p.ownerId) ?? null) : null,
-  }));
+  const assignees = await pipelineAssigneeMap(pipelines.map((p) => p.id));
+  return pipelines.map((p) => withAssignees(p, assignees));
 }
 export type PipelineListItem = Awaited<ReturnType<typeof listPipelines>>[number];
 
@@ -30,11 +61,8 @@ export async function getPipelineById(id: string) {
   });
   if (!pipeline) return null;
 
-  const names = await memberNameMap([
-    pipeline.ownerId,
-    pipeline.deactivatedById,
-    pipeline.reactivatedById,
-  ]);
+  const assignees = await pipelineAssigneeMap([pipeline.id]);
+  const names = await memberNameMap([pipeline.deactivatedById, pipeline.reactivatedById]);
   let reasonLabel: string | null = null;
   if (pipeline.deactivationReasonId) {
     const reason = await db.deactivationReason.findUnique({
@@ -44,12 +72,11 @@ export async function getPipelineById(id: string) {
     reasonLabel = reason?.label ?? null;
   }
 
-  const { project, ...rest } = pipeline;
+  const { project, ...rest } = withAssignees(pipeline, assignees);
 
   return {
     ...rest,
     handedOff: Boolean(project),
-    ownerName: pipeline.ownerId ? (names.get(pipeline.ownerId) ?? null) : null,
     deactivatedByName: pipeline.deactivatedById
       ? (names.get(pipeline.deactivatedById) ?? null)
       : null,

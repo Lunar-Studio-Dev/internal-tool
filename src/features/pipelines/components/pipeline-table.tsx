@@ -55,14 +55,14 @@ export type PipelineRow = {
   name: string;
   currentPhase: PhaseType;
   status: PipelineStatus;
-  ownerName: string;
+  assigneeNames: string[];
   createdAt: string;
 };
 
 type PipelineFilters = {
   phase: "ALL" | PhaseType;
   status: "ALL" | PipelineStatus;
-  owner: "ALL" | string;
+  assignee: "ALL" | string;
   fromDate: string;
   toDate: string;
 };
@@ -70,7 +70,7 @@ type PipelineFilters = {
 const FILTER_DEFAULTS: PipelineFilters = {
   phase: "ALL",
   status: "ALL",
-  owner: "ALL",
+  assignee: "ALL",
   fromDate: "",
   toDate: "",
 };
@@ -81,13 +81,13 @@ export function PipelineTable() {
   const [search, setSearch] = useState("");
   const [phase, setPhase] = useState<"ALL" | PhaseType>("ALL");
   const [status, setStatus] = useState<"ALL" | PipelineStatus>("ALL");
-  const [owner, setOwner] = useState<"ALL" | string>("ALL");
+  const [assignee, setAssignee] = useState<"ALL" | string>("ALL");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [listFilter, setListFilter] = useState<PipelineListFilter>("all");
   const [filterOpen, setFilterOpen] = useState(false);
   const { draft, setDraft } = useFilterSheetDraft(
-    { phase, status, owner, fromDate, toDate },
+    { phase, status, assignee, fromDate, toDate },
     filterOpen,
   );
 
@@ -101,20 +101,21 @@ export function PipelineTable() {
         name: p.name,
         currentPhase: p.currentPhase,
         status: p.status,
-        ownerName: p.ownerName ?? "",
+        assigneeNames: p.assigneeNames ?? [],
         createdAt: p.createdAt,
       })),
     [query.data],
   );
 
-  const owners = useMemo(
-    () => [...new Set(pipelines.map((p) => p.ownerName).filter(Boolean))].sort(),
+  const assignees = useMemo(
+    () =>
+      [...new Set(pipelines.flatMap((p) => p.assigneeNames).filter(Boolean))].sort(),
     [pipelines],
   );
 
   const metrics = useMemo(() => computePipelineListMetrics(pipelines), [pipelines]);
   const activeFilterCount = countActiveFilters(
-    { phase, status, owner, fromDate, toDate },
+    { phase, status, assignee, fromDate, toDate },
     FILTER_DEFAULTS,
   );
 
@@ -124,17 +125,18 @@ export function PipelineTable() {
     const effectiveStatus = status !== "ALL" ? status : statusFromList;
 
     return filterPipelineList(pipelines, listFilter).filter((p) => {
-      if (q && !`${p.code} ${p.businessName} ${p.name} ${p.ownerName}`.toLowerCase().includes(q)) {
+      const assigneeText = p.assigneeNames.join(" ");
+      if (q && !`${p.code} ${p.businessName} ${p.name} ${assigneeText}`.toLowerCase().includes(q)) {
         return false;
       }
       if (phase !== "ALL" && p.currentPhase !== phase) return false;
       if (effectiveStatus !== "ALL" && p.status !== effectiveStatus) return false;
-      if (owner !== "ALL" && p.ownerName !== owner) return false;
+      if (assignee !== "ALL" && !p.assigneeNames.includes(assignee)) return false;
       if (fromDate && p.createdAt.slice(0, 10) < fromDate) return false;
       if (toDate && p.createdAt.slice(0, 10) > toDate) return false;
       return true;
     });
-  }, [pipelines, search, phase, status, owner, fromDate, toDate, listFilter]);
+  }, [pipelines, search, phase, status, assignee, fromDate, toDate, listFilter]);
 
   const columns: DataTableColumn<PipelineRow>[] = [
     {
@@ -156,8 +158,8 @@ export function PipelineTable() {
       ),
     },
     {
-      id: "opportunity",
-      header: "Opportunity",
+      id: "name",
+      header: "Pipeline name",
       cell: (p) => (
         <Link href={`/pipelines/${p.id}`} className="hover:underline">
           {p.name}
@@ -167,16 +169,21 @@ export function PipelineTable() {
     { id: "phase", header: "Phase", cell: (p) => PHASE_LABELS[p.currentPhase] },
     { id: "status", header: "Status", cell: (p) => <StatusBadge kind={p.status} /> },
     {
-      id: "owner",
-      header: "Owner",
-      cell: (p) => (p.ownerName ? p.ownerName : <span className="text-muted-foreground">—</span>),
+      id: "assignees",
+      header: "Assigned to",
+      cell: (p) =>
+        p.assigneeNames.length ? (
+          p.assigneeNames.join(", ")
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
     },
   ];
 
   function applyDraftFilters() {
     setPhase(draft.phase);
     setStatus(draft.status);
-    setOwner(draft.owner);
+    setAssignee(draft.assignee);
     setFromDate(draft.fromDate);
     setToDate(draft.toDate);
     setListFilter("all");
@@ -224,18 +231,18 @@ export function PipelineTable() {
         </Select>
       </FilterSheetSection>
 
-      {owners.length > 0 ? (
-        <FilterSheetSection label="Owner">
+      {assignees.length > 0 ? (
+        <FilterSheetSection label="Assigned to">
           <Select
-            value={draft.owner}
-            onValueChange={(value) => setDraft((prev) => ({ ...prev, owner: value }))}
+            value={draft.assignee}
+            onValueChange={(value) => setDraft((prev) => ({ ...prev, assignee: value }))}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Owner" />
+              <SelectValue placeholder="Assigned to" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">All owners</SelectItem>
-              {owners.map((name) => (
+              <SelectItem value="ALL">All assignees</SelectItem>
+              {assignees.map((name) => (
                 <SelectItem key={name} value={name}>
                   {name}
                 </SelectItem>
@@ -298,14 +305,14 @@ export function PipelineTable() {
           ))}
         </SelectContent>
       </Select>
-      {owners.length > 0 ? (
-        <Select value={owner} onValueChange={setOwner}>
+      {assignees.length > 0 ? (
+        <Select value={assignee} onValueChange={setAssignee}>
           <SelectTrigger className="w-40">
-            <SelectValue placeholder="Owner" />
+            <SelectValue placeholder="Assigned to" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">All owners</SelectItem>
-            {owners.map((name) => (
+            <SelectItem value="ALL">All assignees</SelectItem>
+            {assignees.map((name) => (
               <SelectItem key={name} value={name}>
                 {name}
               </SelectItem>
@@ -397,7 +404,7 @@ export function PipelineTable() {
       <ListFilterBar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search code, business, opportunity…"
+        searchPlaceholder="Search code, business, pipeline name…"
         activeFilterCount={activeFilterCount}
         filterOpen={filterOpen}
         onFilterOpenChange={setFilterOpen}

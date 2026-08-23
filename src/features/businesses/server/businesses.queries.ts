@@ -5,6 +5,20 @@ import { requirePermission } from "@/lib/auth/member";
 import { db } from "@/lib/db";
 import { memberNameMap } from "@/lib/lookups";
 
+const businessListInclude = {
+  contacts: { where: { isPrimary: true }, take: 1 },
+  pipelines: { select: { status: true } },
+  sector: { select: { id: true, name: true } },
+  profileIndustry: { select: { id: true, name: true } },
+  market: { select: { id: true, name: true } },
+  sourceCategory: { select: { id: true, name: true } },
+  sourceSubCategory: { select: { id: true, name: true } },
+  businessLocations: { include: { location: { select: { id: true, name: true } } } },
+  businessTags: { include: { tag: { select: { id: true, name: true } } } },
+  sourceReferredByBusiness: { select: { id: true, name: true } },
+  _count: { select: { contacts: true } },
+} as const;
+
 /**
  * Businesses with their primary contact and contact count. Pipeline counts are
  * added in PHASE_5; pages render 0 until then.
@@ -13,11 +27,7 @@ export async function listBusinesses() {
   await requirePermission("business:read");
   return db.business.findMany({
     orderBy: { createdAt: "desc" },
-    include: {
-      contacts: { where: { isPrimary: true }, take: 1 },
-      pipelines: { select: { status: true } },
-      _count: { select: { contacts: true } },
-    },
+    include: businessListInclude,
   });
 }
 export type BusinessListItem = Awaited<ReturnType<typeof listBusinesses>>[number];
@@ -28,6 +38,7 @@ export async function getBusinessById(id: string) {
   return db.business.findUnique({
     where: { id },
     include: {
+      ...businessListInclude,
       contacts: { orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] },
       pipelines: {
         select: { id: true, code: true, name: true, currentPhase: true, status: true },
@@ -57,7 +68,6 @@ export async function listPipelinesForBusiness(businessId: string) {
       name: true,
       currentPhase: true,
       status: true,
-      ownerId: true,
       createdAt: true,
       deactivatedAt: true,
       decision: { select: { decision: true } },
@@ -70,7 +80,18 @@ export async function listPipelinesForBusiness(businessId: string) {
     },
   });
 
-  const names = await memberNameMap(pipelines.map((p) => p.ownerId));
+  const assigneeRows = await db.pipelineAssignee.findMany({
+    where: { pipelineId: { in: pipelines.map((p) => p.id) } },
+    orderBy: { assignedAt: "asc" },
+  });
+  const memberIds = [...new Set(assigneeRows.map((r) => r.memberId))];
+  const names = await memberNameMap(memberIds);
+  const assigneesByPipeline = new Map<string, string[]>();
+  for (const row of assigneeRows) {
+    const list = assigneesByPipeline.get(row.pipelineId) ?? [];
+    list.push(names.get(row.memberId) ?? "Unknown");
+    assigneesByPipeline.set(row.pipelineId, list);
+  }
 
   return pipelines.map((p) => ({
     id: p.id,
@@ -78,7 +99,7 @@ export async function listPipelinesForBusiness(businessId: string) {
     name: p.name,
     currentPhase: p.currentPhase,
     status: p.status,
-    ownerName: p.ownerId ? (names.get(p.ownerId) ?? null) : null,
+    assigneeNames: assigneesByPipeline.get(p.id) ?? [],
     createdAt: p.createdAt,
     deactivatedAt: p.deactivatedAt,
     decision: p.decision?.decision ?? null,
@@ -180,3 +201,4 @@ export async function getBusinessFinancialSummary(
     projectCount: successful.length,
   };
 }
+

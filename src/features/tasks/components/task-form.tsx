@@ -1,9 +1,15 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  BusinessCombobox,
+  EnumCombobox,
+  PipelineCombobox,
+} from "@/components/common/combobox";
+import type { ComboboxOption } from "@/components/common/combobox";
 import { FieldError, FieldLabel } from "@/components/common/form-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -69,6 +75,15 @@ export function TaskForm({
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const isPending = createTask.isPending || updateTask.isPending;
+
+  const phaseOptions = useMemo(
+    (): ComboboxOption[] =>
+      PHASE_ORDER.map((phase) => ({
+        value: phase,
+        label: PHASE_LABELS[phase],
+      })),
+    [],
+  );
 
   function set<K extends keyof TaskFormInitial>(key: K, value: TaskFormInitial[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -213,62 +228,42 @@ export function TaskForm({
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="flex flex-col gap-2">
           <FieldLabel htmlFor="task-business">Business</FieldLabel>
-          <Select
-            value={form.businessId || NONE}
-            onValueChange={(v) => set("businessId", v === NONE ? "" : v)}
-          >
-            <SelectTrigger id="task-business">
-              <SelectValue placeholder="None" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>None</SelectItem>
-              {options.businesses.map((b) => (
-                <SelectItem key={b.id} value={b.id}>
-                  {b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <BusinessCombobox
+            id="task-business"
+            options={options.businesses}
+            value={form.businessId || null}
+            allowClear
+            clearValue={NONE}
+            placeholder="None"
+            onChange={(v) => set("businessId", v === NONE ? "" : v)}
+          />
           <FieldError error={errors.businessId} />
         </div>
         <div className="flex flex-col gap-2">
           <FieldLabel htmlFor="task-pipeline">Pipeline</FieldLabel>
-          <Select
+          <PipelineCombobox
+            id="task-pipeline"
+            options={options.pipelines.map((p) => ({ id: p.id, label: p.label }))}
             value={form.pipelineId || NONE}
-            onValueChange={(v) => set("pipelineId", v === NONE ? "" : v)}
-          >
-            <SelectTrigger id="task-pipeline">
-              <SelectValue placeholder="None" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>None</SelectItem>
-              {options.pipelines.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            allowClear
+            clearValue={NONE}
+            placeholder="None"
+            onChange={(v) => set("pipelineId", v === NONE ? "" : v)}
+          />
           <FieldError error={errors.pipelineId} />
         </div>
         <div className="flex flex-col gap-2">
           <FieldLabel htmlFor="task-phase">Phase</FieldLabel>
-          <Select
+          <EnumCombobox
+            id="task-phase"
+            options={phaseOptions}
             value={form.phaseType || NONE}
-            onValueChange={(v) => set("phaseType", v === NONE ? "" : (v as PhaseType))}
-          >
-            <SelectTrigger id="task-phase">
-              <SelectValue placeholder="None" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>None</SelectItem>
-              {PHASE_ORDER.map((p) => (
-                <SelectItem key={p} value={p}>
-                  {PHASE_LABELS[p]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            allowClear
+            clearValue={NONE}
+            searchable={false}
+            placeholder="None"
+            onChange={(v) => set("phaseType", v === NONE ? "" : (v as PhaseType))}
+          />
           <FieldError error={errors.phaseType} />
         </div>
       </div>

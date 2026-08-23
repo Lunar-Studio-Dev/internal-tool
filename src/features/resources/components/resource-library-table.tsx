@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { BusinessCombobox } from "@/components/common/combobox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -136,7 +137,7 @@ export function ResourceLibraryTable({
         resources
           .filter((r) => r.businessId)
           .map((r) => [r.businessId as string, r.businessName ?? r.businessId] as const),
-      )].map(([id, name]) => ({ id, name })),
+      )].map(([id, name]) => ({ id, name: name ?? id })),
     [resources],
   );
 
@@ -195,6 +196,19 @@ export function ResourceLibraryTable({
     },
   ];
 
+  const businessFilter = (
+    <BusinessCombobox
+      options={businesses}
+      value={business}
+      onChange={setBusiness}
+      placeholder="Business"
+      allowAll
+      allLabel="All businesses"
+      allValue="ALL"
+      className="w-48"
+    />
+  );
+
   return (
     <div className="flex flex-col gap-4">
       <ListFilterBar
@@ -212,22 +226,15 @@ export function ResourceLibraryTable({
         filterSheetContent={
           <>
             <FilterSheetSection label="Business">
-              <Select
+              <BusinessCombobox
+                options={businesses}
                 value={draft.business}
-                onValueChange={(value) => setDraft((prev) => ({ ...prev, business: value }))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Business" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All businesses</SelectItem>
-                  {businesses.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(value) => setDraft((prev) => ({ ...prev, business: value }))}
+                placeholder="Business"
+                allowAll
+                allLabel="All businesses"
+                allValue="ALL"
+              />
             </FilterSheetSection>
             <FilterSheetSection label="Type">
               <Select
@@ -253,19 +260,7 @@ export function ResourceLibraryTable({
         }
         desktopFilters={
           <>
-            <Select value={business} onValueChange={setBusiness}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Business" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All businesses</SelectItem>
-                {businesses.map((b) => (
-                  <SelectItem key={b.id} value={b.id}>
-                    {b.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {businessFilter}
             <Select value={type} onValueChange={(v) => setType(v as "ALL" | ResourceType)}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Type" />

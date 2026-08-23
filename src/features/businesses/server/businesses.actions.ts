@@ -1,5 +1,6 @@
 import "server-only";
 
+import { SOURCE_CATEGORY_NAMES } from "@/features/businesses/constants";
 import {
   createBusinessSchema,
   updateBusinessSchema,
@@ -11,7 +12,6 @@ import {
 } from "@/features/businesses/schemas/contact.schema";
 import { findPossibleDuplicates } from "@/features/businesses/server/duplicates";
 import type { DuplicateCandidate } from "@/features/businesses/types";
-import { Prisma } from "@/generated/prisma/client";
 import { logActivity } from "@/lib/activity";
 import { requirePermission } from "@/lib/auth/member";
 import { db } from "@/lib/db";
@@ -33,6 +33,112 @@ function cleanSocial(social?: SocialLinks): Record<string, string> | null {
   return entries.length ? Object.fromEntries(entries) : null;
 }
 
+async function validateSourceOnServer(data: {
+  sourceCategoryId: string;
+  sourceSubCategoryId?: string;
+  sourceReferredByBusinessId?: string;
+  sourceReferenceLabel?: string;
+}): Promise<{ ok: true; categoryName: string } | { ok: false; error: string }> {
+  const category = await db.sourceCategory.findUnique({
+    where: { id: data.sourceCategoryId },
+    select: { name: true },
+  });
+  if (!category) return { ok: false, error: "Invalid source category." };
+
+  if (category.name === SOURCE_CATEGORY_NAMES.CLUB) {
+    if (!data.sourceSubCategoryId) {
+      return { ok: false, error: "Select a club or sub-club." };
+    }
+    const sub = await db.sourceSubCategory.findFirst({
+      where: { id: data.sourceSubCategoryId, sourceCategoryId: data.sourceCategoryId },
+    });
+    if (!sub) return { ok: false, error: "Invalid club selection." };
+  } else if (data.sourceSubCategoryId) {
+    return { ok: false, error: "Sub-category applies to Club source only." };
+  }
+
+  if (category.name === SOURCE_CATEGORY_NAMES.EXISTING_CLIENT) {
+    if (!data.sourceReferredByBusinessId) {
+      return { ok: false, error: "Select the referring client." };
+    }
+  }
+
+  if (category.name === SOURCE_CATEGORY_NAMES.EXTERNAL) {
+    if (!data.sourceReferenceLabel?.trim()) {
+      return { ok: false, error: "Enter a reference label." };
+    }
+  }
+
+  return { ok: true, categoryName: category.name };
+}
+
+async function denormalizedProfileText(data: {
+  industryId?: string;
+  locationIds?: string[];
+}) {
+  const [industry, locations] = await Promise.all([
+    data.industryId
+      ? db.industry.findUnique({ where: { id: data.industryId }, select: { name: true } })
+      : null,
+    data.locationIds?.length
+      ? db.location.findMany({
+          where: { id: { in: data.locationIds } },
+          select: { name: true },
+          orderBy: { name: "asc" },
+        })
+      : [],
+  ]);
+  return {
+    industry: industry?.name ?? null,
+    location: locations[0]?.name ?? null,
+  };
+}
+
+function businessWriteData(
+  data: {
+    name: string;
+    website?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    social?: SocialLinks;
+    notes?: string;
+    sourceCategoryId?: string;
+    sourceSubCategoryId?: string;
+    sourceReferredByBusinessId?: string;
+    sourceReferenceLabel?: string;
+    sourceReferenceNote?: string;
+    sectorId?: string;
+    industryId?: string;
+    marketId?: string;
+  },
+  denormalized: { industry: string | null; location: string | null },
+) {
+  return {
+    name: data.name,
+    website: emptyToNull(data.website),
+    email: emptyToNull(data.email),
+    phone: emptyToNull(data.phone),
+    industry: denormalized.industry,
+    location: denormalized.location,
+    address: emptyToNull(data.address),
+    social: cleanSocial(data.social) ?? undefined,
+    notes: emptyToNull(data.notes),
+    ...(data.sourceCategoryId
+      ? {
+          sourceCategoryId: data.sourceCategoryId,
+          sourceSubCategoryId: emptyToNull(data.sourceSubCategoryId),
+          sourceReferredByBusinessId: emptyToNull(data.sourceReferredByBusinessId),
+          sourceReferenceLabel: emptyToNull(data.sourceReferenceLabel),
+          sourceReferenceNote: emptyToNull(data.sourceReferenceNote),
+        }
+      : {}),
+    sectorId: emptyToNull(data.sectorId),
+    industryId: emptyToNull(data.industryId),
+    marketId: emptyToNull(data.marketId),
+  };
+}
+
 export async function createBusinessAction(input: unknown): Promise<CreateBusinessResult> {
   const member = await requirePermission("business:write");
 
@@ -42,8 +148,10 @@ export async function createBusinessAction(input: unknown): Promise<CreateBusine
   }
   const data = parsed.data;
 
+  const sourceCheck = await validateSourceOnServer(data);
+  if (!sourceCheck.ok) return sourceCheck;
+
   if (data.force) {
-    // Only admins may bypass the duplicate guard (requirement #3).
     if (!member.isAdmin) {
       return { ok: false, error: "Only an admin can create a business despite duplicates." };
     }
@@ -58,23 +166,26 @@ export async function createBusinessAction(input: unknown): Promise<CreateBusine
     if (duplicates.length > 0) return { ok: false, duplicates };
   }
 
+  const denormalized = await denormalizedProfileText(data);
+
   try {
     const business = await db.$transaction(async (tx) => {
       const created = await tx.business.create({
         data: {
-          name: data.name,
-          website: emptyToNull(data.website),
-          email: emptyToNull(data.email),
-          phone: emptyToNull(data.phone),
-          industry: emptyToNull(data.industry),
-          location: emptyToNull(data.location),
-          address: emptyToNull(data.address),
-          social: cleanSocial(data.social) ?? undefined,
-          notes: emptyToNull(data.notes),
+          ...businessWriteData(data, denormalized),
           createdById: member.id,
+          businessLocations: data.locationIds.length
+            ? {
+                create: data.locationIds.map((locationId) => ({ locationId })),
+              }
+            : undefined,
+          businessTags: data.tagIds.length
+            ? {
+                create: data.tagIds.map((tagId) => ({ tagId })),
+              }
+            : undefined,
         },
       });
-      // The creation form always captures a primary contact (WF-08).
       await tx.contact.create({
         data: {
           businessId: created.id,
@@ -93,7 +204,15 @@ export async function createBusinessAction(input: unknown): Promise<CreateBusine
       entityType: "Business",
       entityId: business.id,
       businessId: business.id,
-      metadata: { name: business.name },
+      metadata: {
+        name: business.name,
+        sourceCategoryId: data.sourceCategoryId,
+        sectorId: data.sectorId,
+        industryId: data.industryId,
+        marketId: data.marketId,
+        locationIds: data.locationIds,
+        tagIds: data.tagIds,
+      },
     });
     return { ok: true, id: business.id };
   } catch {
@@ -110,22 +229,34 @@ export async function updateBusinessAction(input: unknown): Promise<ActionResult
   }
   const data = parsed.data;
 
+  if (data.sourceCategoryId) {
+    const sourceCheck = await validateSourceOnServer({
+      sourceCategoryId: data.sourceCategoryId,
+      sourceSubCategoryId: data.sourceSubCategoryId,
+      sourceReferredByBusinessId: data.sourceReferredByBusinessId,
+      sourceReferenceLabel: data.sourceReferenceLabel,
+    });
+    if (!sourceCheck.ok) return sourceCheck;
+  }
+
+  const denormalized = await denormalizedProfileText(data);
+
   try {
-    // Only business-level info is edited here; contacts and any pipeline
-    // snapshots (PHASE_5) are untouched — editing must not rewrite history.
-    await db.business.update({
-      where: { id: data.id },
-      data: {
-        name: data.name,
-        website: emptyToNull(data.website),
-        email: emptyToNull(data.email),
-        phone: emptyToNull(data.phone),
-        industry: emptyToNull(data.industry),
-        location: emptyToNull(data.location),
-        address: emptyToNull(data.address),
-        social: cleanSocial(data.social) ?? Prisma.DbNull,
-        notes: emptyToNull(data.notes),
-      },
+    await db.$transaction(async (tx) => {
+      await tx.businessLocation.deleteMany({ where: { businessId: data.id } });
+      await tx.businessTag.deleteMany({ where: { businessId: data.id } });
+      await tx.business.update({
+        where: { id: data.id },
+        data: {
+          ...businessWriteData(data, denormalized),
+          businessLocations: data.locationIds.length
+            ? { create: data.locationIds.map((locationId) => ({ locationId })) }
+            : undefined,
+          businessTags: data.tagIds.length
+            ? { create: data.tagIds.map((tagId) => ({ tagId })) }
+            : undefined,
+        },
+      });
     });
   } catch {
     return { ok: false, error: "Could not update the business." };

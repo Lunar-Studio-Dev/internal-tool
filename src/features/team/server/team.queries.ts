@@ -68,7 +68,7 @@ export async function getMemberWorkload(id: string): Promise<MemberWorkload> {
           dueAt: { lt: now },
         },
       }),
-      db.pipeline.count({ where: { ownerId: id } }),
+      db.pipeline.count({ where: { assignees: { some: { memberId: id } } } }),
       db.followUp.count({ where: { assigneeId: id, completedAt: null } }),
       db.task.findMany({
         where: { assigneeId: id },
@@ -76,7 +76,7 @@ export async function getMemberWorkload(id: string): Promise<MemberWorkload> {
         take: 50,
       }),
       db.pipeline.findMany({
-        where: { ownerId: id },
+        where: { assignees: { some: { memberId: id } } },
         include: { business: { select: { name: true } } },
         orderBy: { createdAt: "desc" },
         take: 50,

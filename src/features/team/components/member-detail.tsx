@@ -147,7 +147,7 @@ export function MemberDetailView({ id }: { id: string }) {
             </TabsContent>
             <TabsContent value="pipelines">
               {!workload?.pipelines.length ? (
-                <EmptyState title="No pipelines yet" description="Owned pipelines appear here." />
+                <EmptyState title="No pipelines yet" description="Assigned pipelines appear here." />
               ) : (
                 <div className="flex flex-col divide-y rounded-lg border">
                   {workload.pipelines.map((pipeline) => (

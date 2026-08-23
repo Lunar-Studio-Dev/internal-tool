@@ -1,17 +1,7 @@
 import "server-only";
 
-import { getAppSettings } from "@/lib/app-settings";
 import { requirePermission } from "@/lib/auth/member";
 import { db } from "@/lib/db";
-
-export async function getSettings() {
-  await requirePermission("settings:manage");
-  const [settings, phases] = await Promise.all([
-    getAppSettings(),
-    Promise.resolve(null),
-  ]);
-  return { settings };
-}
 
 export async function listAllDeactivationReasons() {
   await requirePermission("settings:manage");

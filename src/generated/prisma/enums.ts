@@ -71,20 +71,6 @@ export const PipelineStatus = {
 export type PipelineStatus = (typeof PipelineStatus)[keyof typeof PipelineStatus]
 
 
-export const LeadSource = {
-  WEBSITE: 'WEBSITE',
-  INSTAGRAM: 'INSTAGRAM',
-  LINKEDIN: 'LINKEDIN',
-  REFERRAL: 'REFERRAL',
-  DIRECT: 'DIRECT',
-  COLD: 'COLD',
-  MANUAL_RESEARCH: 'MANUAL_RESEARCH',
-  OTHER: 'OTHER'
-} as const
-
-export type LeadSource = (typeof LeadSource)[keyof typeof LeadSource]
-
-
 export const Priority = {
   LOW: 'LOW',
   MEDIUM: 'MEDIUM',

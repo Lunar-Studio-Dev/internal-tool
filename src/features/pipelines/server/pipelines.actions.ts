@@ -35,12 +35,22 @@ export async function createPipelineAction(input: unknown): Promise<CreatePipeli
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
-  const { businessId, name, opportunityType, leadSource, ownerId, notes } = parsed.data;
+  const { businessId, name, assigneeIds, notes } = parsed.data;
 
   const business = await db.business.findUnique({ where: { id: businessId }, select: { id: true } });
   if (!business) return { ok: false, error: "Select a valid business." };
 
-  const owner = ownerId ? ownerId : null;
+  const uniqueAssignees = [...new Set(assigneeIds.filter(Boolean))];
+  if (uniqueAssignees.length) {
+    const members = await db.teamMember.findMany({
+      where: { id: { in: uniqueAssignees }, status: "ACTIVE" },
+      select: { id: true },
+    });
+    if (members.length !== uniqueAssignees.length) {
+      return { ok: false, error: "One or more assignees are invalid." };
+    }
+  }
+
   let created: { id: string } | null = null;
 
   // Retry to absorb rare code collisions from concurrent creates.
@@ -53,20 +63,21 @@ export async function createPipelineAction(input: unknown): Promise<CreatePipeli
             code,
             businessId,
             name,
-            opportunityType: emptyToNull(opportunityType),
-            leadSource,
-            ownerId: owner,
             notes: emptyToNull(notes),
             currentPhase: PhaseType.DISCOVERY,
             status: PipelineStatus.ACTIVE,
           },
         });
+        if (uniqueAssignees.length) {
+          await tx.pipelineAssignee.createMany({
+            data: uniqueAssignees.map((memberId) => ({ pipelineId: pipeline.id, memberId })),
+          });
+        }
         await tx.pipelinePhase.create({
           data: {
             pipelineId: pipeline.id,
             type: PhaseType.DISCOVERY,
             status: PhaseStatus.ACTIVE,
-            ownerId: owner,
           },
         });
         return { id: pipeline.id };

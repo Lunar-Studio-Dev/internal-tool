@@ -86,4 +86,16 @@ export const queryKeys = {
     all: ["settings"] as const,
     data: () => [...queryKeys.settings.all, "data"] as const,
   },
+  taxonomy: {
+    all: ["taxonomy"] as const,
+    sourceCategories: () => [...queryKeys.taxonomy.all, "source-categories"] as const,
+    sourceSubCategories: (sourceCategoryId?: string) =>
+      [...queryKeys.taxonomy.all, "source-subcategories", sourceCategoryId ?? "all"] as const,
+    sectors: () => [...queryKeys.taxonomy.all, "sectors"] as const,
+    industries: (sectorId?: string) =>
+      [...queryKeys.taxonomy.all, "industries", sectorId ?? "all"] as const,
+    markets: () => [...queryKeys.taxonomy.all, "markets"] as const,
+    locations: () => [...queryKeys.taxonomy.all, "locations"] as const,
+    tags: () => [...queryKeys.taxonomy.all, "tags"] as const,
+  },
 } as const;
