@@ -51,6 +51,7 @@ import {
   useUpdateSourceCategory,
   useUpdateSourceSubCategory,
   useUpdateTag,
+  pendingMutationId,
 } from "@/features/settings/api";
 import { TaxonomyAdminPanel } from "@/features/settings/components/taxonomy-admin-panel";
 
@@ -123,6 +124,9 @@ function SourcesAdmin({ taxonomy }: { taxonomy?: SettingsQueriesTaxonomy }) {
     })) ?? [];
 
   const clubCategories = taxonomy?.sourceCategories.filter((c) => c.allowsSubcategories) ?? [];
+  const categoryPendingId =
+    pendingMutationId(updateCategory) ?? pendingMutationId(setCategoryActive);
+  const subPendingId = pendingMutationId(updateSub) ?? pendingMutationId(setSubActive);
 
   return (
     <div className="flex flex-col gap-4">
@@ -131,24 +135,34 @@ function SourcesAdmin({ taxonomy }: { taxonomy?: SettingsQueriesTaxonomy }) {
         description="Top-level source types used in business onboarding."
         items={categories}
         addPending={createCategory.isPending}
+        pendingItemId={categoryPendingId}
         onAdd={async (name) => createCategory.mutateAsync({ name })}
         onUpdate={async (id, name) => updateCategory.mutateAsync({ id, name })}
         onSetActive={async (id, active) => setCategoryActive.mutateAsync({ id, active })}
         extraFields={(item) => {
           const row = taxonomy?.sourceCategories.find((c) => c.id === item.id);
           if (!row) return null;
+          const pending = categoryPendingId === item.id;
           return (
             <div className="flex items-center gap-2 pt-1">
               <Switch
                 id={`sub-${item.id}`}
                 checked={row.allowsSubcategories}
+                disabled={pending}
                 onCheckedChange={(checked) =>
-                  updateCategory.mutate({ id: item.id, name: item.name, allowsSubcategories: checked })
+                  updateCategory.mutate({
+                    id: item.id,
+                    name: item.name,
+                    allowsSubcategories: checked,
+                  })
                 }
               />
               <Label htmlFor={`sub-${item.id}`} className="text-xs font-normal">
                 Allow sub-categories
               </Label>
+              {pending ? (
+                <Loader2Icon className="size-3.5 animate-spin text-muted-foreground" />
+              ) : null}
             </div>
           );
         }}
@@ -204,6 +218,7 @@ function SourcesAdmin({ taxonomy }: { taxonomy?: SettingsQueriesTaxonomy }) {
             description=""
             hideAdd
             items={subcategories}
+            pendingItemId={subPendingId}
             onAdd={async () => ({ ok: false })}
             onUpdate={async (id, name) => updateSub.mutateAsync({ id, name })}
             onSetActive={async (id, active) => setSubActive.mutateAsync({ id, active })}
@@ -268,6 +283,9 @@ function SectorsIndustriesAdmin({ taxonomy }: { taxonomy?: SettingsQueriesTaxono
           })) ?? []
         }
         addPending={createSector.isPending}
+        pendingItemId={
+          pendingMutationId(updateSector) ?? pendingMutationId(setSectorActive)
+        }
         onAdd={async (name) => createSector.mutateAsync({ name })}
         onUpdate={async (id, name) => updateSector.mutateAsync({ id, name })}
         onSetActive={async (id, active) => setSectorActive.mutateAsync({ id, active })}
@@ -326,6 +344,9 @@ function SectorsIndustriesAdmin({ taxonomy }: { taxonomy?: SettingsQueriesTaxono
                 meta: i.sector?.name ? `Sector: ${i.sector.name}` : undefined,
               })) ?? []
             }
+            pendingItemId={
+              pendingMutationId(updateIndustry) ?? pendingMutationId(setIndustryActive)
+            }
             onAdd={async () => ({ ok: false })}
             onUpdate={async (id, name) => {
               const row = taxonomy?.industries.find((i) => i.id === id);
@@ -360,6 +381,7 @@ function MarketsAdmin({ taxonomy }: { taxonomy?: SettingsQueriesTaxonomy }) {
         })) ?? []
       }
       addPending={create.isPending}
+      pendingItemId={pendingMutationId(update) ?? pendingMutationId(setActive)}
       onAdd={async (name) => create.mutateAsync({ name })}
       onUpdate={async (id, name) => update.mutateAsync({ id, name })}
       onSetActive={async (id, active) => setActive.mutateAsync({ id, active })}
@@ -384,6 +406,7 @@ function LocationsAdmin({ taxonomy }: { taxonomy?: SettingsQueriesTaxonomy }) {
         })) ?? []
       }
       addPending={create.isPending}
+      pendingItemId={pendingMutationId(update) ?? pendingMutationId(setActive)}
       onAdd={async (name) => create.mutateAsync({ name })}
       onUpdate={async (id, name) => update.mutateAsync({ id, name })}
       onSetActive={async (id, active) => setActive.mutateAsync({ id, active })}
@@ -408,6 +431,7 @@ function TagsAdmin({ taxonomy }: { taxonomy?: SettingsQueriesTaxonomy }) {
         })) ?? []
       }
       addPending={create.isPending}
+      pendingItemId={pendingMutationId(update) ?? pendingMutationId(setActive)}
       onAdd={async (name) => create.mutateAsync({ name })}
       onUpdate={async (id, name) => update.mutateAsync({ id, name })}
       onSetActive={async (id, active) => setActive.mutateAsync({ id, active })}
@@ -426,6 +450,8 @@ function DeactivationReasonsAdmin({
   const [newLabel, setNewLabel] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
+  const pendingId =
+    pendingMutationId(updateReason) ?? pendingMutationId(setEnabled);
 
   return (
     <Card>
@@ -448,15 +474,23 @@ function DeactivationReasonsAdmin({
             onChange={(e) => setNewLabel(e.target.value)}
           />
           <Button type="submit" disabled={addReason.isPending || !newLabel.trim()}>
-            <PlusIcon className="size-4" />
+            {addReason.isPending ? (
+              <Loader2Icon className="size-4 animate-spin" />
+            ) : (
+              <PlusIcon className="size-4" />
+            )}
             Add
           </Button>
         </form>
         <ul className="flex flex-col gap-2">
-          {reasons.map((r) => (
+          {reasons.map((r) => {
+            const rowPending = pendingId === r.id;
+            return (
             <li
               key={r.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2"
+              className={`flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 ${
+                rowPending ? "opacity-70" : ""
+              }`}
             >
               {editingId === r.id ? (
                 <form
@@ -467,11 +501,21 @@ function DeactivationReasonsAdmin({
                     if (result.ok) setEditingId(null);
                   }}
                 >
-                  <Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} />
-                  <Button type="submit" size="sm">
-                    Save
+                  <Input
+                    value={editLabel}
+                    onChange={(e) => setEditLabel(e.target.value)}
+                    disabled={rowPending}
+                  />
+                  <Button type="submit" size="sm" disabled={rowPending}>
+                    {rowPending ? <Loader2Icon className="size-4 animate-spin" /> : "Save"}
                   </Button>
-                  <Button type="button" size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={rowPending}
+                    onClick={() => setEditingId(null)}
+                  >
                     Cancel
                   </Button>
                 </form>
@@ -487,11 +531,15 @@ function DeactivationReasonsAdmin({
                         Disabled
                       </Badge>
                     ) : null}
+                    {rowPending ? (
+                      <Loader2Icon className="size-3.5 animate-spin text-muted-foreground" />
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"
                       variant="ghost"
+                      disabled={rowPending}
                       onClick={() => {
                         setEditingId(r.id);
                         setEditLabel(r.label);
@@ -501,6 +549,7 @@ function DeactivationReasonsAdmin({
                     </Button>
                     <Switch
                       checked={r.enabled}
+                      disabled={rowPending}
                       onCheckedChange={(checked) =>
                         setEnabled.mutate({ id: r.id, enabled: checked })
                       }
@@ -509,7 +558,8 @@ function DeactivationReasonsAdmin({
                 </>
               )}
             </li>
-          ))}
+            );
+          })}
         </ul>
       </CardContent>
     </Card>
